@@ -1,0 +1,14 @@
+{
+  "SchemaVersion": 1,
+  "Name" : "KegMaster_Embedded",
+  "ComponentId" : "89dde637-8b26-4b8c-b7bd-a343240aff3c",
+  "EntryPoint": "/bin/app",
+  "CmdArgs": [],
+  "Capabilities": {
+    "AllowedConnections": [],
+    "Gpio": [ 8, 9, 10 ],
+    "Uart": [],
+    "WifiConfig": false
+  },
+  "ApplicationType":"Default"
+}
