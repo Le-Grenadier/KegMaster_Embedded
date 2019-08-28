@@ -1,3 +1,6 @@
 [submodule "AzureSamples"]
 	path = lib/azure_samples
 	url = https://github.com/Azure/azure-sphere-samples.git
+[submodule "AvnetSamples"]
+	path = lib/avnet_samples
+	url = https://github.com/Avnet/AvnetAzureSphereStarterKitReferenceDesign.git
