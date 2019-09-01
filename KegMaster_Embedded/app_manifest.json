@@ -1,14 +1,18 @@
 {
   "SchemaVersion": 1,
-  "Name" : "KegMaster_Embedded",
-  "ComponentId" : "89dde637-8b26-4b8c-b7bd-a343240aff3c",
+  "Name": "KegMaster_Embedded",
+  "ComponentId": "89dde637-8b26-4b8c-b7bd-a343240aff3c",
   "EntryPoint": "/bin/app",
-  "CmdArgs": [],
   "Capabilities": {
-    "AllowedConnections": [],
-    "Gpio": [ 8, 9, 10 ],
+    "AllowedConnections": [ "KegMasterHub.azure-devices.net", "KegMasterIotHub.azure-devices.net" ],
+    "AllowedTcpServerPorts": [],
+    "AllowedUdpServerPorts": [],
+    "Gpio": [ 0, 4, 5, 8, 9, 10, 12, 13, 34 ],
     "Uart": [],
-    "WifiConfig": false
-  },
-  "ApplicationType":"Default"
+    "I2cMaster": [ "ISU2" ],
+    "SpiMaster": [],
+    "WifiConfig": true,
+    "NetworkConfig": false,
+    "SystemTime": false
+  }
 }

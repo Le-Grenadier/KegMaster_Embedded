@@ -13,16 +13,82 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Lib">
+      <UniqueIdentifier>{157178ab-3b33-4c70-bb5c-ca8fede50d79}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lib\TimerUtilities">
+      <UniqueIdentifier>{7c1f81b5-bd74-44e4-a73e-d1ed2f474a0e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lib\I2C">
+      <UniqueIdentifier>{48deefb6-1463-47ac-8d3c-68ab3aab78ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lib\IotUtilities">
+      <UniqueIdentifier>{f0c7f6ff-62f9-47d2-b8e1-26b08b2a80fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lib\json">
+      <UniqueIdentifier>{979c7d69-454d-4b0e-b1f9-2c32fe176814}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <UpToDateCheckInput Include="app_manifest.json" />
-  </ItemGroup>  
+    <ClCompile Include="..\lib\azure_samples\Samples\AzureIoT\AzureIoT\epoll_timerfd_utilities.c">
+      <Filter>Lib\TimerUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\i2c.c">
+      <Filter>Lib\I2C</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\azure_iot_utilities.c">
+      <Filter>Lib\IotUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="SatelitePicIntf.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="jsonUtil.c">
+      <Filter>Lib\json</Filter>
+    </ClCompile>
+    <ClCompile Include="AzureIntf.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KegItem.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KegMaster.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
   <ItemGroup>
-    <Image Include="Icon.ico">
+    <ClInclude Include="..\lib\azure_samples\Samples\AzureIoT\AzureIoT\epoll_timerfd_utilities.h">
+      <Filter>Lib\TimerUtilities</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\i2c.h">
+      <Filter>Lib\I2C</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\azure_iot_utilities.h">
+      <Filter>Lib\IotUtilities</Filter>
+    </ClInclude>
+    <ClInclude Include="SatelitePicIntf.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="jsonUtil.h">
+      <Filter>Lib\json</Filter>
+    </ClInclude>
+    <ClInclude Include="ConnectionString.h">
       <Filter>Resource Files</Filter>
-    </Image>
+    </ClInclude>
+    <ClInclude Include="ConnectionStringPrv.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AzureIntf.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="KegItem.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="KegMaster.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

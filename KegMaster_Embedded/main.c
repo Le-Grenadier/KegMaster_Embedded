@@ -6,6 +6,9 @@
 #include <applibs/log.h>
 #include <applibs/gpio.h>
 
+#include "KegItem.h"
+#include "epoll_timerfd_utilities.h"
+
 int main(void)
 {
     // This minimal Azure Sphere app repeatedly toggles GPIO 9, which is the green channel of RGB
@@ -31,6 +34,7 @@ int main(void)
     }
 
     const struct timespec sleepTime = {1, 0};
+	testrun();
     while (true) {
 		 int value; 
 		
@@ -45,5 +49,20 @@ int main(void)
         nanosleep(&sleepTime, NULL);
         //GPIO_SetValue(fd, GPIO_Value_High);
         //nanosleep(&sleepTime, NULL);
+
+
+		{
+			extern int epollFd;
+			WaitForEventAndCallHandler(epollFd);
+		}
+
+
+		/*
+		Get data from azure
+		 - contains info about number of kegs
+		Parse data into 'Kegs'
+		 - each keg => thres
+		Each keg item runs through fields and updates 
+		*/
     }
 }

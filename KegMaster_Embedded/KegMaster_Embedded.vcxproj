@@ -25,7 +25,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
-    <TargetSysroot>2</TargetSysroot>
+    <TargetSysroot>2+Beta1905</TargetSysroot>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
@@ -36,15 +36,39 @@
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
+    <IncludePath>$(SolutionDir)lib\azure_samples\Samples\AzureIoT\AzureIoT\;$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemGroup>
+    <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\azure_iot_utilities.c" />
+    <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\i2c.c" />
+    <ClCompile Include="..\lib\azure_samples\Samples\AzureIoT\AzureIoT\epoll_timerfd_utilities.c" />
+    <ClCompile Include="AzureIntf.c" />
+    <ClCompile Include="KegItem.c" />
+    <ClCompile Include="KegMaster.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="SatelitePicIntf.c" />
+    <ClCompile Include="jsonUtil.c" />
     <UpToDateCheckInput Include="app_manifest.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\azure_iot_utilities.h" />
+    <ClInclude Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\i2c.h" />
+    <ClInclude Include="..\lib\azure_samples\Samples\AzureIoT\AzureIoT\epoll_timerfd_utilities.h" />
+    <ClInclude Include="AzureIntf.h" />
+    <ClInclude Include="ConnectionString.h" />
+    <ClInclude Include="ConnectionStringPrv.h" />
+    <ClInclude Include="jsonUtil.h" />
+    <ClInclude Include="KegItem.h" />
+    <ClInclude Include="KegMaster.h" />
+    <ClInclude Include="SatelitePicIntf.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalOptions>-Werror=implicit-function-declaration %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">$(SolutionDir)\KegMaster_Embedded;$(SolutionDir)lib\__azure_samples\Samples\AzureIoT\AzureIoT\;$(SolutionDir)lib\avnet_samples\AvnetStarterKitReferenceDesign\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <LibraryDependencies>applibs;pthread;gcc_s;c</LibraryDependencies>
