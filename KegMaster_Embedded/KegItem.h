@@ -32,9 +32,10 @@ typedef KegItem_obj* (KegItem_funcInit(KegItem_obj* self,
 struct KegItem_obj
 {
 	/* Data */
+	char* keg_guid;
 	char* key;
 	void* value;
-	KegItem_ValueType valueType;
+	KegItem_ValueType value_type;
 	
 	/* State */
 	bool value_sync;  /* Ready for sync with Sql Db */	
@@ -64,6 +65,7 @@ struct KegItem_obj
 KegItem Object Constructors
 =============================================================================*/
 KegItem_obj* KegItem_CreateNew(
+	const char* guid,
 	const char* key,
 	KegItem_ValueType type
 );

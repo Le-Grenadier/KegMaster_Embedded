@@ -42,6 +42,7 @@
   <ItemGroup>
     <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\azure_iot_utilities.c" />
     <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\i2c.c" />
+    <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\parson.c" />
     <ClCompile Include="..\lib\azure_samples\Samples\AzureIoT\AzureIoT\epoll_timerfd_utilities.c" />
     <ClCompile Include="AzureIntf.c" />
     <ClCompile Include="KegItem.c" />
@@ -54,6 +55,7 @@
   <ItemGroup>
     <ClInclude Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\azure_iot_utilities.h" />
     <ClInclude Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\i2c.h" />
+    <ClInclude Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\parson.h" />
     <ClInclude Include="..\lib\azure_samples\Samples\AzureIoT\AzureIoT\epoll_timerfd_utilities.h" />
     <ClInclude Include="AzureIntf.h" />
     <ClInclude Include="ConnectionString.h" />

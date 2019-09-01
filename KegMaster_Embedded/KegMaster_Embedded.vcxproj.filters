@@ -58,6 +58,9 @@
     <ClCompile Include="KegMaster.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\parson.c">
+      <Filter>Lib\json</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\lib\azure_samples\Samples\AzureIoT\AzureIoT\epoll_timerfd_utilities.h">
@@ -89,6 +92,9 @@
     </ClInclude>
     <ClInclude Include="KegMaster.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\parson.h">
+      <Filter>Lib\json</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

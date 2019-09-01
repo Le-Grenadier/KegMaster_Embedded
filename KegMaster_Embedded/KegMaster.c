@@ -5,10 +5,15 @@
 #include <signal.h>
 #include <string.h>
 
+#include "ConnectionStringPrv.h"
 #include "KegMaster.h"
 #include "KegItem.h"
 
+#include "azure_iot_utilities.h"
+#include "azureiot/iothub_device_client_ll.h"
 #include "epoll_timerfd_utilities.h"
+
+extern IOTHUB_DEVICE_CLIENT_LL_HANDLE iothubClientHandle;
 
 /* Available Data  */
 //const char* KegItem_Fields[] =
@@ -46,7 +51,7 @@ EventData TEventData = { .eventHandler = &TestPeriodic };
 
 int KegMaster_initRemote()
 {
-
+	AzureIoT_SetupClient();
 
 
 	// Tell the system about the callback function that gets called when we receive a device twin update message from Azure
@@ -57,7 +62,7 @@ int KegMaster_initRemote()
 
 int KegMaster_initLocal()
 {
-	e = KegItem_CreateNew(test, KegItem_FLOAT);
+	e = KegItem_CreateNew(KEG_GUID_PRV, test, KegItem_FLOAT);
 
 	KegItem_init(e,
 		KegItem_HwGetPressureCrnt,//KegItem_DbGetPressureCrnt, //self->refresh_fromDb = refresh_fromDb;

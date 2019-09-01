@@ -32,6 +32,7 @@ KegItem Object Constructors
  * Create new Keg Item and prepare for initialization
  -----------------------------------------------------------------------------*/
 KegItem_obj* KegItem_CreateNew(
+	const char* guid,
 	const char* key,
 	KegItem_ValueType type
 	)
@@ -48,16 +49,22 @@ KegItem_obj* KegItem_CreateNew(
 	//{ kegItem_setDateTime, kegItem_formatDateTime },
 	//{ kegItem_setBool, kegItem_formatBool }
 	};
-
+	/* Create new elememt */
 	KegItem_obj* e;
 	e = malloc(sizeof(KegItem_obj));
 	memset(e, 0, sizeof(KegItem_obj));
 
-	e->init = &KegItem_init;
-	e->key = malloc(sizeof(key));
+	/* Update key and Keg GUID */
+	e->keg_guid = malloc(strlen(guid));
+	e->key = malloc(strlen(key));
+	strcpy(e->keg_guid, guid);
 	strcpy(e->key, key);
 
+	e->init = &KegItem_init;
+
+
 	assert(type != KegItem_NONE && type <= KegItem_TYPECNT );
+	e->value_type = type;
 	e->value_set = valSet_funcs[type].setVal;
 	e->value_toString = valSet_funcs[type].getStr;
 	e->toJson = KegItem_toJson;
@@ -104,8 +111,8 @@ int kegItem_setFloat(KegItem_obj* self, void* value)
 	if (self->value == NULL)
 	{
 		self->value = malloc(sizeof(float));
+		memset(self->value, 0, sizeof(float));
 	}
-	memset(self->value, 0, sizeof(float));
 	*((float*)self->value) = *(float*)value;
 	
 	return(true);
@@ -137,16 +144,17 @@ KegItem Object Key:Value to JSON
  - char* must be free'd after use
 =============================================================================*/
 char* KegItem_toJson(KegItem_obj* self) {
-	const char* JSON_FMT = "{\"%s\":\"%s\"}";
+	const char* JSON_FMT = "{\"Id\":\"%s\", \"%s\":\"%s\"}";
 	char* c;
 	size_t key_len = strlen(self->key);
 	char* val_s = self->value_toString(self);
 	size_t val_len = strlen(val_s);
-	unsigned int mal_sz = strlen(JSON_FMT) /*- 4%s and all that*/ + key_len + val_len;
+	size_t guid_len = strlen(self->keg_guid);
+	unsigned int mal_sz = strlen(JSON_FMT) /*- 4%s and all that*/ + key_len + val_len + guid_len;
 
 	c = malloc(mal_sz);
 	memset(c, 0, sizeof(mal_sz));
-	snprintf(c, mal_sz, JSON_FMT, self->key, val_s);
+	snprintf(c, mal_sz, JSON_FMT, self->keg_guid, self->key, val_s);
 	free(val_s);
 	return(c);
 }

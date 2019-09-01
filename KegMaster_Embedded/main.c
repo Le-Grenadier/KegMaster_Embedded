@@ -9,6 +9,7 @@
 #include "KegItem.h"
 #include "KegMaster.h"
 #include "epoll_timerfd_utilities.h"
+#include "azure_iot_utilities.h"
 
 int main(void)
 {
@@ -61,7 +62,9 @@ int main(void)
 			WaitForEventAndCallHandler(epollFd);
 		}
 
-
+		// AzureIoT_DoPeriodicTasks() needs to be called frequently in order to keep active
+		// the flow of data with the Azure IoT Hub
+		AzureIoT_DoPeriodicTasks();
 		/*
 		Get data from azure
 		 - contains info about number of kegs
