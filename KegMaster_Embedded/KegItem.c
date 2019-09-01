@@ -6,48 +6,13 @@
 
 #include "azureiot/iothub_message.h"
 #include <azureiot/iothub_device_client_ll.h>
-#include "epoll_timerfd_utilities.h"
+
 #include "KegItem.h"
 
 
 #include "azure_iot_utilities.h"
 #include "connection_strings.h"
 
-
-int epollFd = -1;
-static int TimerFd = -1;
-static const char* test = "PressureCrnt";
-
-static void TestPeriodic(EventData* e);
-KegItem_obj* e;
-EventData TEventData = { .eventHandler = &TestPeriodic };
-
-int testrun(void)
-{
-	e = KegItem_CreateNew(test, KegItem_FLOAT);
-	KegItem_init(e,
-		KegItem_HwGetPressureCrnt,//KegItem_DbGetPressureCrnt, //self->refresh_fromDb = refresh_fromDb;
-		NULL, //self->refresh_fromDb = refresh_fromDb;
-		15,/*refresh every second(s)*/
-		KegItem_CleanDbPressureCrnt //self->value_clean = value_clean;
-		);
-	// Set up a timer to poll the buttons
-	struct timespec tperiod = { 15, 0 };
-	epollFd = CreateEpollFd();
-	TimerFd = CreateTimerFdAndAddToEpoll(epollFd, &tperiod, &TEventData, EPOLLIN);
-	return(true);
-}
-
-static void TestPeriodic(EventData* eventData)
-{
-
-	if (ConsumeTimerFdEvent(TimerFd) != 0) {
-		//terminationRequired = true;
-		return;
-	}
-	e->refresh_fromHw(e);
-	e->value_clean(e);
-}
 
 
 

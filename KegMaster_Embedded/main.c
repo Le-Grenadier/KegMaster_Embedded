@@ -7,6 +7,7 @@
 #include <applibs/gpio.h>
 
 #include "KegItem.h"
+#include "KegMaster.h"
 #include "epoll_timerfd_utilities.h"
 
 int main(void)
@@ -34,7 +35,11 @@ int main(void)
     }
 
     const struct timespec sleepTime = {1, 0};
-	testrun();
+
+	KegMaster_initRemote();
+	KegMaster_initLocal();
+	KegMaster_initProcs();
+
     while (true) {
 		 int value; 
 		
