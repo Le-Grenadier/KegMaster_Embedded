@@ -217,7 +217,7 @@ KegItem data processing callback 'cleaner' functions
 int KegItem_CleanDbPressureCrnt(KegItem_obj* self)
 {	
 	char* p = self->toJson(self);
-	//AzureIoT_SendMessage(p);
+	AzureIoT_SendMessage(p);
 	free(p);
 	return(true);
 }

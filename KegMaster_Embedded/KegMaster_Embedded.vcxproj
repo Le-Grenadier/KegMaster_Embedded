@@ -71,7 +71,7 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">$(SolutionDir)\KegMaster_Embedded;$(SolutionDir)lib\__azure_samples\Samples\AzureIoT\AzureIoT\;$(SolutionDir)lib\avnet_samples\AvnetStarterKitReferenceDesign\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <LibraryDependencies>applibs;pthread;gcc_s;c</LibraryDependencies>
+      <LibraryDependencies>applibs;pthread;gcc_s;c;azureiot</LibraryDependencies>
       <AdditionalOptions>-Wl,--no-undefined -nodefaultlibs %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
