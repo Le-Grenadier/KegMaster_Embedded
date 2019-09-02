@@ -3,15 +3,18 @@
 
 extern const char* KegItem_Fields[];
 
-/*----- Types -----*/
+/*=============================================================================
+Types 
+=============================================================================*/
 typedef enum {
-	KegItem_NONE = 0,
-	KegItem_FLOAT,
-	KegItem_INT,
-	KegItem_DATE_TIME,
-	KegItem_STR,
-	KegItem_TYPECNT
-} KegItem_ValueType;
+	KegItem_TypeNONE = 0,
+	KegItem_TypeFLOAT,
+	KegItem_TypeINT,
+	KegItem_TypeDATE,
+	KegItem_TypeSTR,
+	KegItem_TypeBOOL,
+	KegItem_TypeCNT
+} KegItem_Type;
 
 /* Forward declare structure type to allow self-reference */
 typedef struct KegItem_obj KegItem_obj;
@@ -19,7 +22,7 @@ typedef struct KegItem_obj KegItem_obj;
 typedef int (KegItem_funcInt(KegItem_obj* self));
 typedef char* (KegItem_funcChr(KegItem_obj* self));
 typedef int (KegItem_funcSet(KegItem_obj* self, void* value));
-typedef int (KegItem_funcProc(KegItem_obj* self, void* parent));
+typedef int (KegItem_funcProc(KegItem_obj* self));
 
 typedef KegItem_obj* (KegItem_funcInit(KegItem_obj* self,
 	KegItem_funcInt* value_refresh,
@@ -29,10 +32,9 @@ typedef KegItem_obj* (KegItem_funcInit(KegItem_obj* self,
 struct KegItem_obj
 {
 	/* Data */
-	char* keg_guid;
 	char* key;
 	void* value;
-	KegItem_ValueType value_type;
+	KegItem_Type value_type;
 	
 	/* State */
 	bool value_sync;  /* Ready for sync with Sql Db */	
@@ -53,6 +55,10 @@ struct KegItem_obj
 	KegItem_funcInt* value_refresh; /* Either Hw or Db assumed */
 	KegItem_funcProc* value_proc;	
 	KegItem_funcInit* init;
+
+	/* Lined List */
+	KegItem_obj* next;
+	KegItem_obj* prev;
 };
 
 
@@ -60,9 +66,8 @@ struct KegItem_obj
 KegItem Object Constructors
 =============================================================================*/
 KegItem_obj* KegItem_Create(
-	const char* guid,
 	const char* key,
-	KegItem_ValueType type
+	KegItem_Type type
 );
 
 
@@ -111,7 +116,25 @@ KegItem Db access interface
 /*=============================================================================
 KegItem data processing callback 'cleaner' functions
 =============================================================================*/
-int KegItem_ProcPressureCrnt(KegItem_obj* self, void* parent);
+int KegItem_ProcPressureCrnt(KegItem_obj* self);
 
+/*=============================================================================
+Utilities
+=============================================================================*/
 
+static __inline KegItem_obj* KegItem_ListGetLast(KegItem_obj* self)
+{
+	return( (self->prev == NULL || self->prev == self) ? self : self->prev);
+}
+
+static __inline KegItem_obj* KegItem_ListInsertAfter(KegItem_obj* pivot, KegItem_obj* next)
+{
+	next->next = pivot->next;
+	next->prev = pivot;
+
+	pivot->next->prev = next;
+	pivot->next = next;
+
+	return(next);
+}
 

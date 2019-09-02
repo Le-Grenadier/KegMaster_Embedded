@@ -17,15 +17,16 @@
 void TestPeriodic(EventData* e);
 int epollFd = -1;
 int TimerFd = -1;
-static const char* presCrnt = "PressureCrnt";
-static const char* presDsrd = "PressureDsrd";
 
-KegItem_obj* e;
+
+KegMaster_obj* e;
 EventData TEventData = { .eventHandler = &TestPeriodic };
 
 
 int main(void)
 {
+	KegMaster_obj* km;
+
     // This minimal Azure Sphere app repeatedly toggles GPIO 9, which is the green channel of RGB
     // LED 1 on the MT3620 RDB.
     // Use this app to test that device and SDK installation succeeded that you can build,
@@ -48,12 +49,15 @@ int main(void)
         return -1;
     }
 
-    const struct timespec sleepTime = {1, 0};
+    const struct timespec sleepTime = {10, 0};
 	AzureIoT_SetupClient();
 
 	KegMaster_initRemote();
 	KegMaster_initLocal();
 	KegMaster_initProcs();
+	km = KegMaster_createKeg(KEG_GUID_PRV);
+	km->field_add(km, "PressureCrnt");
+	
 	/* Init polling handler */
 	epollFd = CreateEpollFd();
 	if (epollFd < 0) {
@@ -67,17 +71,13 @@ int main(void)
 	if (TimerFd < 0) {
 		return -1;
 	}
-	e = KegItem_Create(KEG_GUID_PRV, presCrnt, KegItem_FLOAT);
 
-	KegItem_init(e,
-		KegItem_HwGetPressureCrnt,//KegItem_DbGetPressureCrnt, //self->refresh_fromDb = refresh_fromDb;
-		15,/*refresh every second(s)*/
-		KegItem_ProcPressureCrnt //self->value_clean = value_clean;
-	);
 
     while (true) {
 		 int value; 
 		
+		 km->run(km);
+
 		 value += 1;
 		 value %= 8;
 
@@ -91,10 +91,10 @@ int main(void)
         //nanosleep(&sleepTime, NULL);
 
 
-		{
-			extern int epollFd;
-			WaitForEventAndCallHandler(epollFd);
-		}
+		//{
+		//	extern int epollFd;
+		//	WaitForEventAndCallHandler(epollFd);
+		//}
 
 		// AzureIoT_DoPeriodicTasks() needs to be called frequently in order to keep active
 		// the flow of data with the Azure IoT Hub
@@ -122,6 +122,6 @@ void TestPeriodic(EventData* eventData)
 		return;
 	}
 
-	e->value_refresh(e);
-	e->value_proc(e, NULL);
+	//e->value_refresh(e);
+	//e->value_proc(e, NULL);
 }

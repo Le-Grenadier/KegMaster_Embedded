@@ -22,16 +22,15 @@ KegItem Object Constructors
  * Create new Keg Item and prepare for initialization
  -----------------------------------------------------------------------------*/
 KegItem_obj* KegItem_Create(
-	const char* guid,
 	const char* key,
-	KegItem_ValueType type
+	KegItem_Type type
 	)
 {
 	static const struct
 	{
 		KegItem_funcSet* setVal;
 		KegItem_funcChr* getStr;
-	} valSet_funcs[KegItem_TYPECNT] =
+	} valSet_funcs[KegItem_TypeCNT] =
 	{
 	{ NULL,	NULL},
 	{ kegItem_setFloat, kegItem_formatFloat },
@@ -39,25 +38,26 @@ KegItem_obj* KegItem_Create(
 	//{ kegItem_setDateTime, kegItem_formatDateTime },
 	//{ kegItem_setBool, kegItem_formatBool }
 	};
+
 	/* Create new elememt */
 	KegItem_obj* e;
 	e = malloc(sizeof(KegItem_obj));
-	memset(e, 0, sizeof(KegItem_obj));
+	memset(e, 0, sizeof(KegItem_obj)); /* This memset is important for null pointer checks */
 
-	/* Update key and Keg GUID */
-	e->keg_guid = malloc(strlen(guid));
+	/* Update key */
 	e->key = malloc(strlen(key));
-	strcpy(e->keg_guid, guid);
 	strcpy(e->key, key);
 
 	e->init = &KegItem_init;
 
-
-	assert(type != KegItem_NONE && type <= KegItem_TYPECNT );
+	assert(type != KegItem_TypeNONE && type <= KegItem_TypeCNT );
 	e->value_type = type;
 	e->value_set = valSet_funcs[type].setVal;
 	e->value_toString = valSet_funcs[type].getStr;
 	e->toJson = KegItem_toJson;
+
+	e->next = e;
+	e->prev = e;
 
 	return(e);
 }
@@ -128,17 +128,16 @@ KegItem Object Key:Value to JSON
  - char* must be free'd after use
 =============================================================================*/
 char* KegItem_toJson(KegItem_obj* self) {
-	const char* JSON_FMT = "{\"Id\":\"%s\", \"%s\":\"%s\"}";
+	const char* JSON_ENTRY = "\"%s\":\"%s\"";
 	char* c;
 	size_t key_len = strlen(self->key);
 	char* val_s = self->value_toString(self);
 	size_t val_len = strlen(val_s);
-	size_t guid_len = strlen(self->keg_guid);
-	unsigned int mal_sz = strlen(JSON_FMT) /*- 4%s and all that*/ + key_len + val_len + guid_len;
+	unsigned int mal_sz = strlen(JSON_ENTRY) + key_len + val_len;
 
 	c = malloc(mal_sz);
 	memset(c, 0, sizeof(mal_sz));
-	snprintf(c, mal_sz, JSON_FMT, self->keg_guid, self->key, val_s);
+	snprintf(c, mal_sz, JSON_ENTRY, self->key, val_s);
 	free(val_s);
 	return(c);
 }
@@ -171,10 +170,10 @@ KegItem Db access interface
 /*=============================================================================
 KegItem data processing callback 'cleaner' functions
 =============================================================================*/
-int KegItem_ProcPressureCrnt(KegItem_obj* self, void* parent )
+int KegItem_ProcPressureCrnt(KegItem_obj* self)
 {	
-	char* p = self->toJson(self);
-	AzureIoT_SendMessage(p);
-	free(p);
+	//char* p = self->toJson(self);
+	//AzureIoT_SendMessage(p);
+	//free(p);
 	return(true);
 }
