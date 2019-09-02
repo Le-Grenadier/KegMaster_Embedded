@@ -37,7 +37,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
-    <IncludePath>$(SolutionDir)lib\azure_samples\Samples\AzureIoT\AzureIoT\;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)KegMaster_Embedded;$(SolutionDir)lib\azure_samples\Samples\AzureIoT\AzureIoT\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\azure_iot_utilities.c" />

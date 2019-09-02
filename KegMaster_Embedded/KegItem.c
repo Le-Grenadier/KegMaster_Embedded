@@ -8,21 +8,11 @@
 #include <azureiot/iothub_device_client_ll.h>
 
 #include "KegItem.h"
+#include "KegMaster.h"
 
 
 #include "azure_iot_utilities.h"
 #include "connection_strings.h"
-
-
-
-
-
-
-
-
-
-
-
 
 /*=============================================================================
 KegItem Object Constructors
@@ -31,7 +21,7 @@ KegItem Object Constructors
 /*-----------------------------------------------------------------------------
  * Create new Keg Item and prepare for initialization
  -----------------------------------------------------------------------------*/
-KegItem_obj* KegItem_CreateNew(
+KegItem_obj* KegItem_Create(
 	const char* guid,
 	const char* key,
 	KegItem_ValueType type
@@ -79,26 +69,20 @@ KegItem_obj* KegItem_CreateNew(
  -----------------------------------------------------------------------------*/
 KegItem_obj* KegItem_init(
 	KegItem_obj* self,
-	KegItem_funcInt* refresh_fromHw,
-	KegItem_funcInt* refresh_fromDb,
+	KegItem_funcInt* value_refresh,
 	unsigned int refresh_period,
-	//KegItem_funcInt* update_Db,
-	KegItem_funcInt* value_clean
+	KegItem_funcInt* value_proc
 	)
 {
-	assert(((refresh_fromDb != NULL) ^
-		(refresh_fromHw != NULL)) &&
-		(value_clean != NULL) );
+	assert(((value_refresh != NULL)) && (value_proc != NULL));
 
 	/* Copy functions into object */
-	self->refresh_fromDb = refresh_fromDb;
-	self->refresh_fromHw = refresh_fromHw;
+	self->value_refresh = value_refresh;
 	self->refresh_period = refresh_period;
-	self->value_clean = value_clean;
+	self->value_proc = value_proc;
 
 	/* Perform initial refresh of data */
-	self->value_dirty = self->refresh_fromDb != NULL ? self->refresh_fromDb(self) : self->refresh_fromHw(self);
-	self->value_clean(self);
+	self->value_dirty = self->value_refresh(self);
 	return(self);
 }
 
@@ -187,7 +171,7 @@ KegItem Db access interface
 /*=============================================================================
 KegItem data processing callback 'cleaner' functions
 =============================================================================*/
-int KegItem_CleanDbPressureCrnt(KegItem_obj* self)
+int KegItem_ProcPressureCrnt(KegItem_obj* self, void* parent )
 {	
 	char* p = self->toJson(self);
 	AzureIoT_SendMessage(p);

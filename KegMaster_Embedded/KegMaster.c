@@ -13,8 +13,6 @@
 #include "azureiot/iothub_device_client_ll.h"
 #include "epoll_timerfd_utilities.h"
 
-extern IOTHUB_DEVICE_CLIENT_LL_HANDLE iothubClientHandle;
-
 /* Available Data  */
 //const char* KegItem_Fields[] =
 //	{
@@ -41,19 +39,9 @@ extern IOTHUB_DEVICE_CLIENT_LL_HANDLE iothubClientHandle;
 //	{ KM_SW, "Deleted"				}
 //	};
 
-int epollFd = -1;
-int TimerFd = -1;
-static const char* test = "PressureCrnt";
-
-KegItem_obj* e;
-EventData TEventData = { .eventHandler = &TestPeriodic };
-
 
 int KegMaster_initRemote()
 {
-	AzureIoT_SetupClient();
-
-
 	// Tell the system about the callback function that gets called when we receive a device twin update message from Azure
 	//AzureIoT_SetDeviceTwinUpdateCallback(&deviceTwinChangedHandler);
 
@@ -62,14 +50,7 @@ int KegMaster_initRemote()
 
 int KegMaster_initLocal()
 {
-	e = KegItem_CreateNew(KEG_GUID_PRV, test, KegItem_FLOAT);
 
-	KegItem_init(e,
-		KegItem_HwGetPressureCrnt,//KegItem_DbGetPressureCrnt, //self->refresh_fromDb = refresh_fromDb;
-		NULL, //self->refresh_fromDb = refresh_fromDb;
-		15,/*refresh every second(s)*/
-		KegItem_CleanDbPressureCrnt //self->value_clean = value_clean;
-	);
 
 	//if (initI2c() == -1) {
 	//	return -1;
@@ -85,35 +66,11 @@ int KegMaster_initProcs()
 	//action.sa_handler = TerminationHandler;
 	//sigaction(SIGTERM, &action, NULL);
 
-	/* Init polling handler */
-	epollFd = CreateEpollFd();
-	if (epollFd < 0) {
-		return -1;
-	}
 
-	/* Polling timer to refresh KegItem data */
-	struct timespec tperiod = { 15, 0 };
-	epollFd = CreateEpollFd();
-	TimerFd = CreateTimerFdAndAddToEpoll(epollFd, &tperiod, &TEventData, EPOLLIN);
-	if (TimerFd < 0) {
-		return -1;
-	}
 	return(0);
 }
 
-
-
-
-
-
-
-void TestPeriodic(EventData* eventData)
+int KegMaster_dbGetKegData(void)
 {
-
-	if (ConsumeTimerFdEvent(TimerFd) != 0) {
-		//terminationRequired = true;
-		return;
-	}
-	e->refresh_fromHw(e);
-	e->value_clean(e);
+	return(true);
 }

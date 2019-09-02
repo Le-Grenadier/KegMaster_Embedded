@@ -6,10 +6,23 @@
 #include <applibs/log.h>
 #include <applibs/gpio.h>
 
+#include "ConnectionStringPrv.h"
 #include "KegItem.h"
 #include "KegMaster.h"
 #include "epoll_timerfd_utilities.h"
 #include "azure_iot_utilities.h"
+
+
+// Temp
+void TestPeriodic(EventData* e);
+int epollFd = -1;
+int TimerFd = -1;
+static const char* presCrnt = "PressureCrnt";
+static const char* presDsrd = "PressureDsrd";
+
+KegItem_obj* e;
+EventData TEventData = { .eventHandler = &TestPeriodic };
+
 
 int main(void)
 {
@@ -36,10 +49,31 @@ int main(void)
     }
 
     const struct timespec sleepTime = {1, 0};
+	AzureIoT_SetupClient();
 
 	KegMaster_initRemote();
 	KegMaster_initLocal();
 	KegMaster_initProcs();
+	/* Init polling handler */
+	epollFd = CreateEpollFd();
+	if (epollFd < 0) {
+		return -1;
+	}
+
+	/* Polling timer to refresh KegItem data */
+	struct timespec tperiod = { 5, 0 };
+	epollFd = CreateEpollFd();
+	TimerFd = CreateTimerFdAndAddToEpoll(epollFd, &tperiod, &TEventData, EPOLLIN);
+	if (TimerFd < 0) {
+		return -1;
+	}
+	e = KegItem_Create(KEG_GUID_PRV, presCrnt, KegItem_FLOAT);
+
+	KegItem_init(e,
+		KegItem_HwGetPressureCrnt,//KegItem_DbGetPressureCrnt, //self->refresh_fromDb = refresh_fromDb;
+		15,/*refresh every second(s)*/
+		KegItem_ProcPressureCrnt //self->value_clean = value_clean;
+	);
 
     while (true) {
 		 int value; 
@@ -73,4 +107,21 @@ int main(void)
 		Each keg item runs through fields and updates 
 		*/
     }
+}
+
+
+
+
+
+
+void TestPeriodic(EventData* eventData)
+{
+
+	if (ConsumeTimerFdEvent(TimerFd) != 0) {
+		//terminationRequired = true;
+		return;
+	}
+
+	e->value_refresh(e);
+	e->value_proc(e, NULL);
 }

@@ -19,15 +19,12 @@ typedef struct KegItem_obj KegItem_obj;
 typedef int (KegItem_funcInt(KegItem_obj* self));
 typedef char* (KegItem_funcChr(KegItem_obj* self));
 typedef int (KegItem_funcSet(KegItem_obj* self, void* value));
+typedef int (KegItem_funcProc(KegItem_obj* self, void* parent));
+
 typedef KegItem_obj* (KegItem_funcInit(KegItem_obj* self,
-	KegItem_funcInt* refresh_fromHw,
-	KegItem_funcInt* refresh_fromDb,
+	KegItem_funcInt* value_refresh,
 	unsigned int refresh_period,
-	//KegItem_funcInt* update_Db,
-	KegItem_funcInt* clean_data//,
-	//KegItem_funcInt* run
-)
-);
+	KegItem_funcProc* value_proc ) );
 
 struct KegItem_obj
 {
@@ -53,10 +50,8 @@ struct KegItem_obj
 	int refresh_timePrev; // Could be used for connectiviy issues
 	unsigned int refresh_period;
 
-	KegItem_funcInt* refresh_fromHw; /* Either Hw or Db assumed */
-	KegItem_funcInt* refresh_fromDb; /* Either Hw or Db assumed */
-	//KegItem_funcInt* update_Db;
-	KegItem_funcInt* value_clean;	/* 'Clean' data is kindof a misnomer here, it's really a post-processing callback */
+	KegItem_funcInt* value_refresh; /* Either Hw or Db assumed */
+	KegItem_funcProc* value_proc;	
 	KegItem_funcInit* init;
 };
 
@@ -64,7 +59,7 @@ struct KegItem_obj
 /*=============================================================================
 KegItem Object Constructors
 =============================================================================*/
-KegItem_obj* KegItem_CreateNew(
+KegItem_obj* KegItem_Create(
 	const char* guid,
 	const char* key,
 	KegItem_ValueType type
@@ -73,12 +68,9 @@ KegItem_obj* KegItem_CreateNew(
 
 KegItem_obj* KegItem_init(
 	KegItem_obj* self,
-	KegItem_funcInt* refresh_fromHw,
-	KegItem_funcInt* refresh_fromDb,
+	KegItem_funcInt* value_refresh,
 	unsigned int refresh_period,
-	//KegItem_funcInt* update_Db,
-	KegItem_funcInt* clean_data//,
-	//KegItem_funcInt* run
+	KegItem_funcInt* value_proc
 );
 
 
@@ -119,7 +111,7 @@ KegItem Db access interface
 /*=============================================================================
 KegItem data processing callback 'cleaner' functions
 =============================================================================*/
-int KegItem_CleanDbPressureCrnt(KegItem_obj* self);
+int KegItem_ProcPressureCrnt(KegItem_obj* self, void* parent);
 
 
 
