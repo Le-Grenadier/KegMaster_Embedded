@@ -22,28 +22,28 @@
 	/* Order dependent for ease of indexing, I'll probably remove it in the morning */
 	/* Only one dependency allowed per field atm									*/		
 	/*------------------------------------------------------------------------------*/
-	/*  This field			KegItem_ValueType,		Dependency			update-cb					processing-cb				Update Rate */	
-	{ "Alerts",				KegItem_TypeSTR,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdAlerts*/
-	{ "TapNo",				KegItem_TypeINT,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdTapNo */
-	{ "Name",				KegItem_TypeSTR,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdName */
-	{ "Style",				KegItem_TypeSTR,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdStyle */
-	{ "Description",		KegItem_TypeSTR,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdDescription */
-	{ "DateKegged",			KegItem_TypeDATE,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdDateKegged */
-	{ "DateAvail",			KegItem_TypeDATE,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdDateAvail */
-	{ "PourEn",				KegItem_TypeBOOL,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdPourEn */
-	{ "PourNotification",	KegItem_TypeBOOL,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdPourNotify */
-	{ "PourQtyGlass",		KegItem_TypeFLOAT,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdPourQtyGlass */
-	{ "PourQtySample",		KegItem_TypeFLOAT,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdPourQtySample */
-	{ "PressureCrnt",		KegItem_TypeFLOAT,		"",					KegItem_HwGetPressureCrnt,	KegItem_ProcPressureCrnt,	15			}, /* KegMaster_FieldIdPressureCrnt */
-	{ "PressureDsrd",		KegItem_TypeFLOAT,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdPressureDsrd */
-	{ "PressureDwellTime",	KegItem_TypeFLOAT,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdPressureDwellTime */
-	{ "PressureEn",			KegItem_TypeBOOL,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdPressureEn */
-	{ "QtyAvailable",		KegItem_TypeFLOAT,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdQtyAvailable */
-	{ "QtyReserve",			KegItem_TypeFLOAT,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdQtyReserve */
-	{ "Version",			KegItem_TypeSTR,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdVersion */
-	{ "CreatedAt",			KegItem_TypeDATE,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdCreatedAt */
-	{ "UpdatedAt",			KegItem_TypeDATE,		"",					NULL,						NULL,						15			}, /* KegMaster_FieldIdUpdatedAt */
-	{ "Deleted",			KegItem_TypeBOOL,		"",					NULL,						NULL,					    15			}  /* KegMaster_FieldIdDeleted */
+	/*  This field			KegItem_ValueType,		update-cb					processing-cb				Update Rate */	
+	{ "Alerts",				KegItem_TypeSTR,		NULL,						NULL,						15			}, /* KegMaster_FieldIdAlerts*/
+	{ "TapNo",				KegItem_TypeINT,		NULL,						NULL,						15			}, /* KegMaster_FieldIdTapNo */
+	{ "Name",				KegItem_TypeSTR,		NULL,						NULL,						15			}, /* KegMaster_FieldIdName */
+	{ "Style",				KegItem_TypeSTR,		NULL,						NULL,						15			}, /* KegMaster_FieldIdStyle */
+	{ "Description",		KegItem_TypeSTR,		NULL,						NULL,						15			}, /* KegMaster_FieldIdDescription */
+	{ "DateKegged",			KegItem_TypeDATE,		NULL,						NULL,						15			}, /* KegMaster_FieldIdDateKegged */
+	{ "DateAvail",			KegItem_TypeDATE,		NULL,						NULL,						15			}, /* KegMaster_FieldIdDateAvail */
+	{ "PourEn",				KegItem_TypeBOOL,		NULL,						NULL,						15			}, /* KegMaster_FieldIdPourEn */
+	{ "PourNotification",	KegItem_TypeBOOL,		NULL,						NULL,						15			}, /* KegMaster_FieldIdPourNotify */
+	{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15			}, /* KegMaster_FieldIdPourQtyGlass */
+	{ "PourQtySample",		KegItem_TypeFLOAT,		NULL,						NULL,						15			}, /* KegMaster_FieldIdPourQtySample */
+	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	KegItem_ProcPressureCrnt,	15			}, /* KegMaster_FieldIdPressureCrnt */
+	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						NULL,						15			}, /* KegMaster_FieldIdPressureDsrd */
+	{ "PressureDwellTime",	KegItem_TypeFLOAT,		NULL,						NULL,						15			}, /* KegMaster_FieldIdPressureDwellTime */
+	{ "PressureEn",			KegItem_TypeBOOL,		NULL,						NULL,						15			}, /* KegMaster_FieldIdPressureEn */
+	{ "QtyAvailable",		KegItem_TypeFLOAT,		NULL,						NULL,						15			}, /* KegMaster_FieldIdQtyAvailable */
+	{ "QtyReserve",			KegItem_TypeFLOAT,		NULL,						NULL,						15			}, /* KegMaster_FieldIdQtyReserve */
+	{ "Version",			KegItem_TypeSTR,		NULL,						NULL,						15			}, /* KegMaster_FieldIdVersion */
+	{ "CreatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15			}, /* KegMaster_FieldIdCreatedAt */
+	{ "UpdatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15			}, /* KegMaster_FieldIdUpdatedAt */
+	{ "Deleted",			KegItem_TypeBOOL,		NULL,						NULL,					    15			}  /* KegMaster_FieldIdDeleted */
 	};
 
 
@@ -172,7 +172,7 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
 
 char* KegMaster_getJson(KegMaster_obj* self)
 {
-	static const char* JSON_GRP = "{\"Id\":\"%s\", %s}";
+	static const char* JSON_GRP = "{\"ReqId\": \"none\", \"TapNo\":\"0\", \"Id\":\"%s\", %s}";
 	size_t s;
 	char* c;
 	s = strlen(self->fields_json) + strlen(self->guid) + strlen(JSON_GRP);

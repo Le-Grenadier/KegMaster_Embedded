@@ -70,7 +70,6 @@ struct KegMaster_FieldDefType
 {
 	char* name;
 	KegItem_Type type;
-	char* dep;
 	KegItem_funcInt* update;
 	KegItem_funcInt* proc;
 	unsigned int update_rate; /* Seconds */

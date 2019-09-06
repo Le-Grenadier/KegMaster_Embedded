@@ -74,7 +74,7 @@ KegItem_obj* KegItem_init(
 	KegItem_funcInt* value_proc
 	)
 {
-	assert(((value_refresh != NULL)) && (value_proc != NULL));
+	assert(((value_refresh != NULL)) || (value_proc != NULL));
 
 	/* Copy functions into object */
 	self->value_refresh = value_refresh;

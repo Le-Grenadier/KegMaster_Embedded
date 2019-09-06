@@ -35,7 +35,8 @@ struct KegItem_obj
 	char* key;
 	void* value;
 	KegItem_Type value_type;
-	
+	void* state; /* Item specific state data */
+
 	/* State */
 	bool value_sync;  /* Ready for sync with Sql Db */	
 	bool value_dirty; /* Udpated from HW, not yet processed */
@@ -56,7 +57,7 @@ struct KegItem_obj
 	KegItem_funcProc* value_proc;	
 	KegItem_funcInit* init;
 
-	/* Lined List */
+	/* Linked List */
 	KegItem_obj* next;
 	KegItem_obj* prev;
 };

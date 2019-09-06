@@ -70,10 +70,10 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalOptions>-Werror=implicit-function-declaration %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">$(SolutionDir)\KegMaster_Embedded;$(SolutionDir)lib\__azure_samples\Samples\AzureIoT\AzureIoT\;$(SolutionDir)lib\avnet_samples\AvnetStarterKitReferenceDesign\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">$(SolutionDir)\KegMaster_Embedded;$(SolutionDir)lib\avnet_samples\AvnetStarterKitReferenceDesign\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\SDK\ScopeCppSDK\SDK\include\um\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\SDK\ScopeCppSDK\SDK\include\shared\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <LibraryDependencies>applibs;pthread;gcc_s;c;azureiot</LibraryDependencies>
+      <LibraryDependencies>applibs;pthread;gcc_s;c;azureiot;</LibraryDependencies>
       <AdditionalOptions>-Wl,--no-undefined -nodefaultlibs %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
