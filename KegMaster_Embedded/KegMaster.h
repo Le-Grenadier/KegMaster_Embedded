@@ -9,9 +9,15 @@
 #include "KegItem.h"
 
  /*=============================================================================
+ Literal constants
+ =============================================================================*/
+#define cntOfArray(e) (sizeof(e)/sizeof(e[0]))
+
+ /*=============================================================================
  Types
  =============================================================================*/
 typedef enum {
+	KegMaster_FieldId,
 	KegMaster_FieldIdAlerts,
 	KegMaster_FieldIdTapNo,
 	KegMaster_FieldIdName,
@@ -50,7 +56,6 @@ typedef int (KegMaster_funcInt(KegMaster_obj* self));
 struct KegMaster_obj
 {
 	/* Data */
-	char* guid; 
 	char* fields_json;
 
 	/* Fields */
@@ -80,7 +85,9 @@ int KegMaster_initLocal(void);
 int KegMaster_initProcs(void);
 
 int KegMaster_dbGetKegData(void);
-KegMaster_obj* KegMaster_createKeg(char* guid);
+void KegMaster_createKeg(const char* sqlRow);
 int KegMaster_execute(KegMaster_obj* self);
 KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field);
+KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key);
 char* KegMaster_getJson(KegMaster_obj* self);
+void KegMaster_RequestKegData(int tapNo);

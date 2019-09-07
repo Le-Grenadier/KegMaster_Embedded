@@ -2,18 +2,23 @@
  * Hardware Access interface for Keg Master
  */
 
+#include <assert.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#include <applibs/log.h>
+#include "azure_iot_utilities.h"
+#include "azureiot/iothub_device_client_ll.h"
+#include "epoll_timerfd_utilities.h"
+#include "parson.h"
 
 #include "ConnectionStringPrv.h"
 #include "KegMaster.h"
 #include "KegItem.h"
 
-#include "azure_iot_utilities.h"
-#include "azureiot/iothub_device_client_ll.h"
-#include "epoll_timerfd_utilities.h"
 
 /* Available Data  */
  KegMaster_FieldDefType KegMaster_FieldDef[] =
@@ -23,6 +28,7 @@
 	/* Only one dependency allowed per field atm									*/		
 	/*------------------------------------------------------------------------------*/
 	/*  This field			KegItem_ValueType,		update-cb					processing-cb				Update Rate */	
+	{ "Id",				    KegItem_TypeSTR,		NULL,						NULL,		        		0			}, /* KegMaster_FieldId	*/
 	{ "Alerts",				KegItem_TypeSTR,		NULL,						NULL,						15			}, /* KegMaster_FieldIdAlerts*/
 	{ "TapNo",				KegItem_TypeINT,		NULL,						NULL,						15			}, /* KegMaster_FieldIdTapNo */
 	{ "Name",				KegItem_TypeSTR,		NULL,						NULL,						15			}, /* KegMaster_FieldIdName */
@@ -46,6 +52,7 @@
 	{ "Deleted",			KegItem_TypeBOOL,		NULL,						NULL,					    15			}  /* KegMaster_FieldIdDeleted */
 	};
 
+ extern KegMaster_obj* km;
 
 int KegMaster_initRemote()
 {
@@ -72,7 +79,7 @@ int KegMaster_initProcs()
 	memset(&action, 0, sizeof(struct sigaction));
 	//action.sa_handler = TerminationHandler;
 	//sigaction(SIGTERM, &action, NULL);
-
+	AzureIoT_SetMessageReceivedCallback(KegMaster_createKeg);
 
 	return(0);
 }
@@ -82,23 +89,85 @@ int KegMaster_dbGetKegData(void)
 	return(true);
 }
 
-KegMaster_obj* KegMaster_createKeg(char* guid)
+void KegMaster_createKeg(const char* sqlRow)
 {
-	KegMaster_obj* km;
-	km = malloc(sizeof(KegMaster_obj));
-	memset(km, 0, sizeof(KegMaster_obj)); /* Important for null comparisons */
+	KegMaster_obj* keg;
+	KegItem_obj* ki;
+	char* jsonKey;
+	JSON_Value* jsonRoot = NULL;
+	JSON_Array* jsonArray = NULL;
+	JSON_Object* jsonObj = NULL;
+	JSON_Value* jsonElem = NULL;
+	int i; 
 
-	km->guid = malloc(strlen(guid));
-	strcpy(km->guid, guid);
+	/* Build Keg in memory and initialize fields */
+	keg = malloc(sizeof(KegMaster_obj));
+	memset(keg, 0, sizeof(KegMaster_obj)); /* Important for null comparisons */
 
-	km->field_add = KegMaster_fieldAdd;
-	km->field_GetByKey = NULL;
-	km->field_getJson = KegMaster_getJson;
+	keg->field_add = KegMaster_fieldAdd;
+	keg->field_GetByKey = KegMaster_getFieldByKey;
+	keg->field_getJson = KegMaster_getJson;
+	keg->run = KegMaster_execute;
+
+	/* Build Keg Definition from provided JSON */
+	jsonRoot = json_parse_string(sqlRow);
+	if (jsonRoot == NULL) {
+		Log_Debug("WARNING: Cannot parse the string as JSON content.\n");
+	}
+	jsonArray = json_value_get_array(jsonRoot);
+	jsonObj = json_array_get_object(jsonArray, 0); /* Azure function returns 0-??? number of rows */
+	for (i = 0; i < cntOfArray(KegMaster_FieldDef); i++)
+	{
+		jsonKey = KegMaster_FieldDef[i].name;
+		jsonElem = json_object_get_value(jsonObj, jsonKey);
+		if (jsonElem == NULL)
+		{
+			continue;
+		}
+
+		ki = keg->field_add(keg, KegMaster_FieldDef[i].name);
+		switch (ki->value_type)
+		{
+			bool type_bool;
+			float type_float;
+			int type_int;
+			char* type_str;
+
+			case KegItem_TypeFLOAT:
+				type_float = (float)json_value_get_number(jsonElem);
+				ki->value_set(ki, &type_float);
+				break;
+
+			case KegItem_TypeINT:
+				type_int = (int)json_value_get_number(jsonElem);
+				ki->value_set( ki, &type_int );
+				break;
+
+			case KegItem_TypeDATE:
+				type_str = json_value_get_string(jsonElem);
+				ki->value_set(ki, &type_str);
+				// TODO: Process into date-time obj? 
+				break;
+
+			case KegItem_TypeSTR:
+				type_str = json_value_get_string(jsonElem);
+				ki->value_set(ki, &type_str);
+				break;
+
+			case KegItem_TypeBOOL:
+				type_str = json_value_get_boolean(jsonElem);
+				ki->value_set(ki, &type_str);
+				break;
+
+			case KegItem_TypeNONE:
+			default:
+				assert(false);
+				break;
+		}
+	}
 
 
-	km->run = KegMaster_execute;
-
-	return(km);
+	km = keg;
 }
 
 int KegMaster_execute(KegMaster_obj* self)
@@ -107,6 +176,11 @@ int KegMaster_execute(KegMaster_obj* self)
 	char* c; 
 
 	e = self->fields;
+	if (e == NULL)
+	{
+		return( false );
+	}
+
 	do
 	{
 		if (e->value_refresh == NULL) {
@@ -119,7 +193,7 @@ int KegMaster_execute(KegMaster_obj* self)
 		{
 			char* j;
 			char* s;
-			int sz;
+			size_t sz;
 			e->value_proc(e);
 
 			/* gather JSON and for later SQL db update */
@@ -169,16 +243,52 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
 
 	return(n);
 }
+KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
+{
+	KegItem_obj* this = NULL;
+	KegItem_obj* item;
+	assert(key != NULL);
+
+	this = self->fields;
+	do {
+		if (0 == memcmp(key, this->key, strlen(key))) {
+			item = this;
+			break;
+		}
+		this = this->next;
+	} while (this != self->fields);
+
+	return(item);
+}
 
 char* KegMaster_getJson(KegMaster_obj* self)
 {
-	static const char* JSON_GRP = "{\"ReqId\": \"none\", \"TapNo\":\"0\", \"Id\":\"%s\", %s}";
+	static const char* JSON_GRP = "{%s, %s}";
 	size_t s;
 	char* c;
-	s = strlen(self->fields_json) + strlen(self->guid) + strlen(JSON_GRP);
+	KegItem_obj* item;
+	item = self->field_GetByKey(self, "Id");
+	char* id = item->toJson(item);
+
+	s = strlen(self->fields_json) + strlen(id) + strlen(JSON_GRP);
 	c = malloc(s);
-	snprintf(c, s, JSON_GRP, self->guid, self->fields_json);
+	snprintf(c, s, JSON_GRP, id, self->fields_json);
+	free(id);
 	free(self->fields_json);
 	self->fields_json = NULL;
+	//char *json_serialize_to_string(const JSON_Value *value);
+
 	return(c);
+}
+
+
+void KegMaster_RequestKegData(int tapNo)
+{
+	static const char* JSON_GRP = "{\"ReqId\": \"none\", \"TapNo\":\"%d\"}";
+	size_t s;
+	char* c;
+	s = strlen(JSON_GRP) + 4 /* up to 9999 Taps? ^_^ */;
+	c = malloc(s);
+	snprintf(c, s, JSON_GRP, tapNo);
+	AzureIoT_SendMessage(c);
 }

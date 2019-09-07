@@ -83,20 +83,19 @@ KegItem_obj* KegItem_init(
 /*=============================================================================
 KegItem Object Value Setter functions
 =============================================================================*/
-//__inline KegItem_funcSet kegItem_setInt;
 KegItem_funcSet kegItem_setFloat;
-//__inline KegItem_funcSet kegItem_setDateTime;
-//__inline KegItem_funcSet kegItem_setBool;
-
+KegItem_funcSet kegItem_setInt;
+KegItem_funcSet kegItem_setStr;
+KegItem_funcSet kegItem_setBool;
 
 /*=============================================================================
 KegItem Object Value Formatting functions
  - char* must be free'd after use
 =============================================================================*/
-//__inline KegItem_funcChr kegItem_formatInt;
 KegItem_funcChr kegItem_formatFloat;
-//__inline KegItem_funcChr kegItem_formatDateTime;
-//__inline KegItem_funcChr kegItem_formatBool;
+KegItem_funcChr kegItem_formatInt;
+KegItem_funcChr kegItem_formatStr;
+KegItem_funcChr kegItem_formatBool;
 
 /*=============================================================================
 KegItem Object Key:Value to JSON

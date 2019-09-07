@@ -34,9 +34,10 @@ KegItem_obj* KegItem_Create(
 	{
 	{ NULL,	NULL},
 	{ kegItem_setFloat, kegItem_formatFloat },
-	//{ kegItem_setInt, kegItem_formatInt },
-	//{ kegItem_setDateTime, kegItem_formatDateTime },
-	//{ kegItem_setBool, kegItem_formatBool }
+	{ kegItem_setInt, kegItem_formatInt },
+	{ kegItem_setStr, kegItem_formatStr },
+	{ kegItem_setStr, kegItem_formatStr },
+	{ kegItem_setBool, kegItem_formatBool }
 	};
 
 	/* Create new elememt */
@@ -74,7 +75,7 @@ KegItem_obj* KegItem_init(
 	KegItem_funcInt* value_proc
 	)
 {
-	assert(((value_refresh != NULL)) || (value_proc != NULL));
+	//assert(((value_refresh != NULL)) || (value_proc != NULL));
 
 	/* Copy functions into object */
 	self->value_refresh = value_refresh;
@@ -82,14 +83,19 @@ KegItem_obj* KegItem_init(
 	self->value_proc = value_proc;
 
 	/* Perform initial refresh of data */
-	self->value_dirty = self->value_refresh(self);
+	if (self->value_refresh != NULL){
+		self->value_dirty = self->value_refresh(self);
+	}
+	if (self->value_proc != NULL) {
+		self->value_proc(self);
+	}
+
 	return(self);
 }
 
 /*=============================================================================
 KegItem Object Value Setter functions
 =============================================================================*/
-//__inline KegItem_funcSet kegItem_setInt;
 int kegItem_setFloat(KegItem_obj* self, void* value)
 {
 	if (self->value == NULL)
@@ -101,15 +107,55 @@ int kegItem_setFloat(KegItem_obj* self, void* value)
 	
 	return(true);
 };
-//__inline KegItem_funcSet kegItem_setDateTime;
-//__inline KegItem_funcSet kegItem_setBool;
+
+int kegItem_setInt(KegItem_obj* self, void* value)
+{
+	if (self->value == NULL)
+	{
+		self->value = malloc(sizeof(int));
+		memset(self->value, 0, sizeof(int));
+	}
+	*((int*)self->value) = *(int*)value;
+
+	return(true);
+};
+
+int kegItem_setStr(KegItem_obj* self, void* value)
+{
+	assert(value);
+	if (self->value != NULL && strlen(*(char**)value) > strlen(*(char**)value))
+	{
+		free(self->value);
+		self->value = NULL;
+	}
+	
+	if (self->value == NULL)
+	{
+		size_t sz = strlen(*(char**)value);
+		self->value = malloc(sz);
+		memset(self->value, 0, sz);
+	}
+
+	NULL != strcpy(self->value, *(char**)value);
+	return(true);
+};
+
+int kegItem_setBool(KegItem_obj* self, void* value)
+{
+	if (self->value == NULL)
+	{
+		self->value = malloc(sizeof(bool));
+		memset(self->value, 0, sizeof(bool));
+	}
+	*((bool*)self->value) = *(bool*)value;
+
+	return(true);
+};
 
 /*=============================================================================
 KegItem Object Value Formatting functions
  - char* must be free'd after use
 =============================================================================*/
-
-//__inline KegItem_funcChr kegItem_formatInt;
 char* kegItem_formatFloat(KegItem_obj* self) {
 	const char* FMT = "%3.3f";
 	const size_t PRECISION = 3/*digits*/ + 3/*decimal*/ + 1/*space for decimal*/;
@@ -120,8 +166,45 @@ char* kegItem_formatFloat(KegItem_obj* self) {
 	snprintf(c, PRECISION, FMT, *(float*)self->value);
 	return(c);
 }
-//__inline KegItem_funcChr kegItem_formatDateTime;
-//__inline KegItem_funcChr kegItem_formatBool;
+
+char* kegItem_formatInt(KegItem_obj* self) {
+	const char* FMT = "%d";
+	const size_t PRECISION = (((1<32)/2)-1)/10;
+	char* c;
+
+	c = (char*)malloc(PRECISION);
+	memset(c, 0, sizeof(PRECISION));
+	snprintf(c, PRECISION, FMT, *(int*)self->value);
+	return(c);
+}
+
+char* kegItem_formatStr(KegItem_obj* self) {
+	const char* FMT = "%s";
+
+	char* c;
+	size_t sz = strlen(self->value)+1/* Incl Null Terminator */;
+
+	assert(self->value);
+	c = (char*)malloc(sz);
+	memset(c, 0, sz);
+	snprintf(c, sz, FMT, (char*)self->value);
+	return(c);
+}
+
+char* kegItem_formatBool(KegItem_obj* self) {
+	const char* FMT = "";
+	char* c;
+	char* s;
+	size_t sz;
+
+	assert(self->value);
+	s = self->value ? "True" : "False";
+	sz = strlen(s);
+	c = (char*)malloc(sz);
+	memset(c, 0, sz);
+	snprintf(c, sz, FMT, s);
+	return(c);
+}
 
 /*=============================================================================
 KegItem Object Key:Value to JSON

@@ -21,12 +21,11 @@ int TimerFd = -1;
 
 KegMaster_obj* e;
 EventData TEventData = { .eventHandler = &TestPeriodic };
+KegMaster_obj* km = NULL;
 
 
 int main(void)
 {
-	KegMaster_obj* km;
-
     // This minimal Azure Sphere app repeatedly toggles GPIO 9, which is the green channel of RGB
     // LED 1 on the MT3620 RDB.
     // Use this app to test that device and SDK installation succeeded that you can build,
@@ -55,8 +54,7 @@ int main(void)
 	KegMaster_initRemote();
 	KegMaster_initLocal();
 	KegMaster_initProcs();
-	km = KegMaster_createKeg(KEG_GUID_PRV);
-	km->field_add(km, "PressureCrnt");
+	KegMaster_RequestKegData(0);
 	
 	/* Init polling handler */
 	epollFd = CreateEpollFd();
@@ -76,8 +74,11 @@ int main(void)
     while (true) {
 		 int value; 
 		
-		 km->run(km);
-
+		 if (km != NULL)
+		 {
+			 km->run(km);
+		 }
+		 
 		 value += 1;
 		 value %= 8;
 
