@@ -63,6 +63,7 @@
     <ClInclude Include="jsonUtil.h" />
     <ClInclude Include="KegItem.h" />
     <ClInclude Include="KegMaster.h" />
+    <ClInclude Include="KegMaster_Satellite.h" />
     <ClInclude Include="SatelitePicIntf.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

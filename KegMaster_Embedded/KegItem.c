@@ -1,18 +1,28 @@
 #include <assert.h>
+#include <errno.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
+
+#include <applibs/log.h>
+#include <applibs/i2c.h>
 #include "azureiot/iothub_message.h"
 #include <azureiot/iothub_device_client_ll.h>
 
 #include "KegItem.h"
 #include "KegMaster.h"
-
+#include "KegMaster_Satellite.h"
 
 #include "azure_iot_utilities.h"
 #include "connection_strings.h"
+
+extern int i2cFd;
+
+static KegItem_obj* getSiblingByKey(KegItem_obj* self, char* key);
+
 
 /*=============================================================================
 KegItem Object Constructors
@@ -33,11 +43,11 @@ KegItem_obj* KegItem_Create(
 	} valSet_funcs[KegItem_TypeCNT] =
 	{
 	{ NULL,	NULL},
-	{ kegItem_setFloat, kegItem_formatFloat },
-	{ kegItem_setInt, kegItem_formatInt },
-	{ kegItem_setStr, kegItem_formatStr },
-	{ kegItem_setStr, kegItem_formatStr },
-	{ kegItem_setBool, kegItem_formatBool }
+	{ kegItem_setFloat,                 kegItem_formatFloat },  /* Float */
+	{ kegItem_setInt,                   kegItem_formatInt },      /* Int */
+	{ kegItem_setDateTimeFromString,    kegItem_formatDateTime },      /* Date */
+	{ kegItem_setStr,                   kegItem_formatStr },      /* Str */
+	{ kegItem_setBool,                  kegItem_formatBool }     /* Bool */
 	};
 
 	/* Create new elememt */
@@ -71,7 +81,7 @@ KegItem_obj* KegItem_Create(
 KegItem_obj* KegItem_init(
 	KegItem_obj* self,
 	KegItem_funcInt* value_refresh,
-	unsigned int refresh_period,
+	float refresh_period,
 	KegItem_funcInt* value_proc
 	)
 {
@@ -93,9 +103,9 @@ KegItem_obj* KegItem_init(
 	return(self);
 }
 
-/*=============================================================================
+/*-----------------------------------------------------------------------------
 KegItem Object Value Setter functions
-=============================================================================*/
+-----------------------------------------------------------------------------*/
 int kegItem_setFloat(KegItem_obj* self, void* value)
 {
 	if (self->value == NULL)
@@ -136,7 +146,7 @@ int kegItem_setStr(KegItem_obj* self, void* value)
 		memset(self->value, 0, sz);
 	}
 
-	NULL != strcpy(self->value, *(char**)value);
+	//NULL != strcpy(self->value, *(char**)value);
 	return(true);
 };
 
@@ -152,10 +162,66 @@ int kegItem_setBool(KegItem_obj* self, void* value)
 	return(true);
 };
 
-/*=============================================================================
+
+int kegItem_setDateTimeFromString(KegItem_obj* self, void* value)
+{
+    // Db format example: "2016 - 05 - 20T07:00 : 00.0000000"
+    char* start;
+    char* end;
+    struct tm time;
+    //struct tm tm = *localtime(&t);
+
+    if (self->value == NULL)
+    {
+        self->value = malloc(sizeof(struct tm));
+        memset(self->value, 0, sizeof(struct tm));
+    }
+    /* Year */
+    start = *(char**)value;
+    end = strstr(start,"-");
+    *end = 0;
+    time.tm_year = atoi(start);
+
+    /* Month */
+    start = (char*)end+1;
+    end = strstr(start, "-");
+    *end = 0;
+    time.tm_mon = atoi(start);
+
+    /* Day */
+    start = (char*)end+1;
+    end = strstr(start, "T");
+    *end = 0;
+    time.tm_mday = atoi(start);
+
+    /* Hour */
+    start = (char*)end+1;
+    end = strstr(start, ":");
+    *end = 0;
+    time.tm_hour = atoi(start);
+    
+    /* Minute */
+    start = (char*)end+1;
+    end = strstr(start, ":");
+    *end = 0;
+    time.tm_min = atoi(start);
+
+    /* Second */
+    start = (char*)end+1;
+    //end = strstr(value, "."); // Omit Partial seconds
+    //*end = 0;
+    time.tm_sec = atoi(start);
+
+
+    memcpy(self->value, &time, sizeof(struct tm));
+
+    return(true);
+};
+
+/*-----------------------------------------------------------------------------
 KegItem Object Value Formatting functions
  - char* must be free'd after use
-=============================================================================*/
+-----------------------------------------------------------------------------*/
 char* kegItem_formatFloat(KegItem_obj* self) {
 	const char* FMT = "%3.3f";
 	const size_t PRECISION = 3/*digits*/ + 3/*decimal*/ + 1/*space for decimal*/;
@@ -206,10 +272,30 @@ char* kegItem_formatBool(KegItem_obj* self) {
 	return(c);
 }
 
-/*=============================================================================
+char* kegItem_formatDateTime(KegItem_obj* self)
+{
+    // Db format example: "2016 - 05 - 20T07:00 : 00.0000000"
+    //struct {
+    //    int i;
+    //}myDateTime;
+
+    //time_t t = time(NULL);
+//struct tm tm = *localtime(&t);
+
+    //if (self->value == NULL)
+    //{
+    //    self->value = malloc(sizeof(bool));
+    //    memset(self->value, 0, sizeof(bool));
+    //}
+    //*((bool*)self->value) = *(bool*)value;
+
+    return("");
+};
+
+/*-----------------------------------------------------------------------------
 KegItem Object Key:Value to JSON
  - char* must be free'd after use
-=============================================================================*/
+-----------------------------------------------------------------------------*/
 char* KegItem_toJson(KegItem_obj* self) {
 	const char* JSON_ENTRY = "\"%s\":\"%s\"";
 	char* c;
@@ -226,23 +312,68 @@ char* KegItem_toJson(KegItem_obj* self) {
 }
 
 /*=============================================================================
-KegItem Hw access interface
+KegItem Hw and DB accessors
 =============================================================================*/
-int KegItem_HwGetPressureCrnt(KegItem_obj* self)
-{
-	if (self->value == NULL)
-	{
+
+int KegItem_HwGetPressureCrnt(KegItem_obj* self){
+	I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
+	int* err;
+	KegMaster_SatelliteMsgType msg;
+	bool result;
+	float pressure;
+	
+	if (self->value == NULL){
 		float f;
 		f = 0.0f;
 		self->value_set(self, &f);
 	}
-	(*(float*)self->value)++;
-	return(self->value_set(self, ((float*)self->value)));
+
+    address += *(I2C_DeviceAddress*)getSiblingByKey(self, "TapNo")->value;
+    msg.id = KegMaster_SateliteMsgId_ADCRead;
+	msg.data.adc.id = 0;
+	msg.data.adc.value = 0;
+	//result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&msg, sizeof(msg));  
+	pressure = (float)msg.data.adc.value; // Do some conversion here later 
+	if (result != 0) {
+		err = (int*)errno;
+		Log_Debug("ERROR: TFMini Soft Reset Fail: errno=%d (%s)\n", err, strerror(err));
+		pressure = 999999.9f;
+	}
+
+	return((int)pressure);
 }
 
-/*=============================================================================
+int KegItem_HwGetQtyAvail(KegItem_obj* self) {
+	I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
+	int* err;
+	KegMaster_SatelliteMsgType msg;
+	bool result;
+	float pressure;
+
+	if (self->value == NULL) {
+		float f;
+		f = 0.0f;
+		self->value_set(self, &f);
+	}
+
+	address += *(I2C_DeviceAddress*)getSiblingByKey(self, "TapNo")->value;
+	msg.id = KegMaster_SateliteMsgId_ADCRead;
+	msg.data.adc.id = 3;
+	msg.data.adc.value = 0;
+	//result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&msg, sizeof(msg));
+	pressure = (float)msg.data.adc.value; // Do some conversion here later  (need to adjust for STP)
+	if (result != 0) {
+		err = errno;
+		Log_Debug("ERROR: TFMini Soft Reset Fail: errno=%d (%s)\n", (int)err, strerror(err));
+		pressure = 999999.9f;
+	}
+
+	return((int)pressure);
+}
+
+/*-----------------------------------------------------------------------------
 KegItem Db access interface
-=============================================================================*/
+-----------------------------------------------------------------------------*/
 //static int KegItem_DbGetPressureCrnt(KegItem_obj * self)
 //{
 //	(*(float*)self->value)++;
@@ -250,13 +381,95 @@ KegItem Db access interface
 //	return(true);
 //}
 
-/*=============================================================================
-KegItem data processing callback 'cleaner' functions
-=============================================================================*/
+/*-----------------------------------------------------------------------------
+KegItem data processing callback functions
+ - This is where either data will be 'cleaned' or otherwise acted upon.
+-----------------------------------------------------------------------------*/
 int KegItem_ProcPressureCrnt(KegItem_obj* self)
-{	
-	//char* p = self->toJson(self);
-	//AzureIoT_SendMessage(p);
-	//free(p);
-	return(true);
+{
+    #define DWELL_MIN 0.02f
+
+    I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
+    float pressure_crnt;
+    float pressure_dsrd;
+    float dwell_time;
+    int* err;
+    KegItem_obj* keg_item;
+    KegMaster_SatelliteMsgType msg;
+    bool result;
+
+    if (self->value == NULL) {
+        return(false);
+    }
+
+    pressure_crnt = *(float*)self->value;
+    pressure_dsrd = *(float*)getSiblingByKey(self, "PressureDsrd")->value;
+    
+    // [insert fancy control algorithm here] 
+    /* For now, just proportional control
+        - Minimum dwell time = 20 ms (mostly chosen at random, based on other, similar valves.)
+        - Max dwell time 1 second (Again chosen mostly at random, based on how scary I'd find it going off while disconnected.) */
+    dwell_time = (pressure_dsrd - pressure_crnt) / pressure_dsrd;
+    dwell_time = fmaxf(dwell_time, DWELL_MIN);
+
+    /* Send message */
+    address += *(I2C_DeviceAddress*)getSiblingByKey(self, "TapNo")->value;
+    msg.id = KegMaster_SateliteMsgId_GpioSet;
+    msg.data.gpio.id = 1;
+    msg.data.gpio.state = 1;
+    msg.data.gpio.holdTime = (uint16_t) dwell_time;
+    result = -1;
+    //result = I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg));
+
+    if (result != 0) {
+        err = errno;
+        Log_Debug("ERROR: TFMini Soft Reset Fail: errno=%d (%s)\n", err, strerror(err));
+    }
+
+    /* Update statistics */
+    keg_item = getSiblingByKey(self, "PressureDwellTime");
+    if (keg_item->value != NULL) {
+        dwell_time += *(float*)keg_item->value;
+    }
+    keg_item->value_set(keg_item, &dwell_time);
+
+    return(result == 0);
+}
+
+
+int KegItem_ProcDateAvail(KegItem_obj* self) {
+    KegItem_obj* keg_item;
+    //time_t t = time(NULL);
+    //struct tm tm = *localtime(&t);
+
+    //KegMaster_SatelliteMsgType msg;
+    keg_item = getSiblingByKey(self, "PressureDwellTime");
+    if (keg_item->value != NULL) {
+        //dwell_time += *(float*)keg_item->value;
+    }
+    //keg_item->value_set(keg_item, &dwell_time);
+    return(0);
+}
+
+
+/*=============================================================================
+Local functions
+=============================================================================*/
+
+static KegItem_obj* getSiblingByKey(KegItem_obj* self, char* key)
+{
+	KegItem_obj* this = NULL;
+	KegItem_obj* item;
+	assert(key != NULL);
+
+	this = self;
+	do {
+		if (0 == memcmp(key, this->key, strlen(key))) {
+			item = this;
+			break;
+		}
+		this = this->next;
+	} while (this != self);
+
+	return(item);
 }

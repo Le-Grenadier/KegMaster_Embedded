@@ -73,11 +73,11 @@ struct KegMaster_obj
 
 struct KegMaster_FieldDefType
 {
-	char* name;
-	KegItem_Type type;
+	char*            name;
+	KegItem_Type     type;
 	KegItem_funcInt* update;
 	KegItem_funcInt* proc;
-	unsigned int update_rate; /* Seconds */
+	float            update_rate; /* Seconds */
 };
 
 int KegMaster_initRemote(void);

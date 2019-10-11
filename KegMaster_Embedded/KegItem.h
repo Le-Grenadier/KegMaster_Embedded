@@ -26,7 +26,7 @@ typedef int (KegItem_funcProc(KegItem_obj* self));
 
 typedef KegItem_obj* (KegItem_funcInit(KegItem_obj* self,
 	KegItem_funcInt* value_refresh,
-	unsigned int refresh_period,
+	float refresh_period,
 	KegItem_funcProc* value_proc ) );
 
 struct KegItem_obj
@@ -51,7 +51,7 @@ struct KegItem_obj
 	/* Behavior */
 	int refresh_timeNext;
 	int refresh_timePrev; // Could be used for connectiviy issues
-	unsigned int refresh_period;
+	float refresh_period;
 
 	KegItem_funcInt* value_refresh; /* Either Hw or Db assumed */
 	KegItem_funcProc* value_proc;	
@@ -75,7 +75,7 @@ KegItem_obj* KegItem_Create(
 KegItem_obj* KegItem_init(
 	KegItem_obj* self,
 	KegItem_funcInt* value_refresh,
-	unsigned int refresh_period,
+	float refresh_period,
 	KegItem_funcInt* value_proc
 );
 
@@ -87,6 +87,7 @@ KegItem_funcSet kegItem_setFloat;
 KegItem_funcSet kegItem_setInt;
 KegItem_funcSet kegItem_setStr;
 KegItem_funcSet kegItem_setBool;
+KegItem_funcSet kegItem_setDateTimeFromString;
 
 /*=============================================================================
 KegItem Object Value Formatting functions
@@ -96,6 +97,8 @@ KegItem_funcChr kegItem_formatFloat;
 KegItem_funcChr kegItem_formatInt;
 KegItem_funcChr kegItem_formatStr;
 KegItem_funcChr kegItem_formatBool;
+KegItem_funcChr kegItem_formatDateTime;
+
 
 /*=============================================================================
 KegItem Object Key:Value to JSON
@@ -104,9 +107,10 @@ KegItem Object Key:Value to JSON
 char* KegItem_toJson(KegItem_obj* self);
 
 /*=============================================================================
-KegItem Hw access interface
+KegItem Hw and DB accessors
 =============================================================================*/
 int KegItem_HwGetPressureCrnt(KegItem_obj* self);
+int KegItem_HwGetQtyAvail(KegItem_obj* self);
 
 /*=============================================================================
 KegItem Db access interface
@@ -117,6 +121,7 @@ KegItem Db access interface
 KegItem data processing callback 'cleaner' functions
 =============================================================================*/
 int KegItem_ProcPressureCrnt(KegItem_obj* self);
+int KegItem_ProcDateAvail(KegItem_obj* self);
 
 /*=============================================================================
 Utilities
