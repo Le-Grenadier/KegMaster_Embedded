@@ -35,17 +35,17 @@
 	{ "Style",				KegItem_TypeSTR,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdStyle */
 	{ "Description",		KegItem_TypeSTR,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdDescription */
 	{ "DateKegged",			KegItem_TypeDATE,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdDateKegged */
-		{ "DateAvail",			KegItem_TypeDATE,		NULL,						KegItem_ProcDateAvail, 60.0f*60.0f			}, /* KegMaster_FieldIdDateAvail */
-	{ "PourEn",				KegItem_TypeBOOL,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPourEn */
+	{ "DateAvail",			KegItem_TypeDATE,		NULL,						KegItem_ProcDateAvail,      60.0f*60.0f			}, /* KegMaster_FieldIdDateAvail */
+	{ "PourEn",				KegItem_TypeBOOL,		NULL,						KegItem_ProcPourEn,         5.0f			}, /* KegMaster_FieldIdPourEn */
 		{ "PourNotification",	KegItem_TypeBOOL,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPourNotify */
-		{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPourQtyGlass */
+	{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPourQtyGlass */
 		{ "PourQtySample",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPourQtySample */
 	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	KegItem_ProcPressureCrnt,	15.0f			}, /* KegMaster_FieldIdPressureCrnt */
 	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPressureDsrd */
     { "PressureDwellTime",	KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPressureDwellTime */
 	{ "PressureEn",			KegItem_TypeBOOL,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPressureEn */
 	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                       15.0f			}, /* KegMaster_FieldIdQtyAvailable */
-		{ "QtyReserve",			KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdQtyReserve */
+	{ "QtyReserve",			KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdQtyReserve */
 	{ "Version",			KegItem_TypeSTR,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdVersion */
 	{ "CreatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdCreatedAt */
 	{ "UpdatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdUpdatedAt */
@@ -183,66 +183,66 @@ int KegMaster_execute(KegMaster_obj* self)
 
 	do
 	{
-		if (e->value_refresh == NULL) {
-			e = e->next;
-			continue;
-		}
+        if (e->value_refresh != NULL) {
+            e->value_refresh(e);
+        }
 
-		e->value_refresh(e);
-		if (e->value_dirty)
+		if(e->value_proc != NULL)
 		{
 			char* j;
 			char* s;
 			size_t sz;
 			e->value_proc(e);
 
-			/* gather JSON and for later SQL db update */
-			j = e->toJson(e);
-			sz = self->fields_json == NULL ? 0 : strlen(self->fields_json);
-			sz += +strlen(j) + 1;
-			s = malloc(sz);
-			memset(s, 0, sz);
-			if (self->fields_json != NULL) { /* Add a comma for multiple fields */
-				s = strcat(self->fields_json, ",");
-			}
-			s = strcat(s, j);
-			free(self->fields_json);
-			free(j);
-			self->fields_json = s;
+            if(e->value_dirty){
+                /* gather JSON and for later SQL db update */
+                j = e->toJson(e);
+                sz = self->fields_json == NULL ? 0 : strlen(self->fields_json);
+                sz += +strlen(j) + 1;
+                s = malloc(sz);
+                memset(s, 0, sz);
+                if (self->fields_json != NULL) { /* Add a comma for multiple fields */
+                    s = strcat(self->fields_json, ",");
+                }
+                s = strcat(s, j);
+                free(self->fields_json);
+                free(j);
+                self->fields_json = s;
+                }
 		}
 
 		e = e->next;
 	} while (e != self->fields);
 
 	c = self->field_getJson(self);
-	AzureIoT_SendMessage(c);
-	free(c);
+    if(c) {
+        AzureIoT_SendMessage(c);
+        free(c);
+    }
 	return(true);
 }
 
 
 KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
 {
-	KegItem_obj* n;
-	KegMaster_FieldDefType* f;
+	KegItem_obj* newItem;
+	KegMaster_FieldDefType* fieldDef;
 
 	for (int i = 0; i < sizeof(KegMaster_FieldDef) / sizeof(KegMaster_FieldDef[0]); i++) {
-		f = &KegMaster_FieldDef[i];
-		if (0 == strcmp(f->name, field)) {
+        fieldDef = &KegMaster_FieldDef[i];
+		if (0 == strcmp(fieldDef->name, field)) {
 			break;
 		}
 	}
-	n = KegItem_Create(f->name, f->type);
-	n = KegItem_init(n, f->update, f->update_rate, f->proc );
+    newItem = KegItem_Create(fieldDef->name, fieldDef->type);
+    newItem = KegItem_init(newItem, fieldDef->update, fieldDef->update_rate, fieldDef->proc );
 
-	if (self->fields == NULL) {
-		self->fields = n;
-	} else { 
-		KegItem_ListInsertAfter(self->fields, n);
-	}
+    self->fields = (self->fields == NULL) ? newItem : KegItem_ListInsertBefore(self->fields, newItem);
 
-	return(n);
+	return(newItem);
 }
+
+
 KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
 {
 	KegItem_obj* this = NULL;
@@ -261,6 +261,7 @@ KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
 	return(item);
 }
 
+/* Calling this function destroys cached data cache after passing it back */
 char* KegMaster_getJson(KegMaster_obj* self)
 {
 	static const char* JSON_GRP = "{%s, %s}";
@@ -269,6 +270,10 @@ char* KegMaster_getJson(KegMaster_obj* self)
 	KegItem_obj* item;
 	item = self->field_GetByKey(self, "Id");
 	char* id = item->toJson(item);
+
+    if (self->fields_json == NULL) {
+        return(NULL);
+    }
 
 	s = strlen(self->fields_json) + strlen(id) + strlen(JSON_GRP);
 	c = malloc(s);

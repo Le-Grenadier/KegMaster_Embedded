@@ -22,7 +22,7 @@
 extern int i2cFd;
 
 static KegItem_obj* getSiblingByKey(KegItem_obj* self, char* key);
-
+static bool dateTimeCompare(struct tm* base, struct tm* challenge);
 
 /*=============================================================================
 KegItem Object Constructors
@@ -42,12 +42,12 @@ KegItem_obj* KegItem_Create(
 		KegItem_funcChr* getStr;
 	} valSet_funcs[KegItem_TypeCNT] =
 	{
-	{ NULL,	NULL},
-	{ kegItem_setFloat,                 kegItem_formatFloat },  /* Float */
-	{ kegItem_setInt,                   kegItem_formatInt },      /* Int */
-	{ kegItem_setDateTimeFromString,    kegItem_formatDateTime },      /* Date */
-	{ kegItem_setStr,                   kegItem_formatStr },      /* Str */
-	{ kegItem_setBool,                  kegItem_formatBool }     /* Bool */
+	{ NULL,	                            NULL},
+	{ kegItem_setFloat,                 kegItem_formatFloat },      /* Float */
+	{ kegItem_setInt,                   kegItem_formatInt },        /* Int */
+	{ kegItem_setDateTimeFromString,    kegItem_formatDateTime },   /* Date */
+	{ kegItem_setStr,                   kegItem_formatStr },        /* Str */
+	{ kegItem_setBool,                  kegItem_formatBool }        /* Bool */
 	};
 
 	/* Create new elememt */
@@ -91,14 +91,6 @@ KegItem_obj* KegItem_init(
 	self->value_refresh = value_refresh;
 	self->refresh_period = refresh_period;
 	self->value_proc = value_proc;
-
-	/* Perform initial refresh of data */
-	if (self->value_refresh != NULL){
-		self->value_dirty = self->value_refresh(self);
-	}
-	if (self->value_proc != NULL) {
-		self->value_proc(self);
-	}
 
 	return(self);
 }
@@ -165,7 +157,7 @@ int kegItem_setBool(KegItem_obj* self, void* value)
 
 int kegItem_setDateTimeFromString(KegItem_obj* self, void* value)
 {
-    // Db format example: "2016 - 05 - 20T07:00 : 00.0000000"
+    // Db format example: "2016-05-20T07:00:00.0000000"
     char* start;
     char* end;
     struct tm time;
@@ -274,22 +266,18 @@ char* kegItem_formatBool(KegItem_obj* self) {
 
 char* kegItem_formatDateTime(KegItem_obj* self)
 {
-    // Db format example: "2016 - 05 - 20T07:00 : 00.0000000"
-    //struct {
-    //    int i;
-    //}myDateTime;
+    // Db format example: "2016-05-20T07:00:00.0000000"
+    #define DT_STR_FMT "%d-%d-%dT%d:%d:%2.7f"
+    #define DT_STR_SIZE 4+2+2+2+2+2+7+6+1 /* digits, seperators, and null terminator*/
+    struct tm* time;
+    char* str;
 
-    //time_t t = time(NULL);
-//struct tm tm = *localtime(&t);
+    time = (struct tm*)self->value;
+    str = malloc(DT_STR_SIZE);
+    memset(str, 0, DT_STR_SIZE);
+    snprintf(str, DT_STR_SIZE, DT_STR_FMT, time->tm_year, time->tm_mon, time->tm_mday, time->tm_hour, time->tm_min, time->tm_sec);
 
-    //if (self->value == NULL)
-    //{
-    //    self->value = malloc(sizeof(bool));
-    //    memset(self->value, 0, sizeof(bool));
-    //}
-    //*((bool*)self->value) = *(bool*)value;
-
-    return("");
+    return(str);
 };
 
 /*-----------------------------------------------------------------------------
@@ -318,17 +306,20 @@ KegItem Hw and DB accessors
 int KegItem_HwGetPressureCrnt(KegItem_obj* self){
 	I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
 	int* err;
+    KegItem_obj* tapNo;
 	KegMaster_SatelliteMsgType msg;
 	bool result;
 	float pressure;
 	
-	if (self->value == NULL){
+    tapNo = getSiblingByKey(self, "TapNo");
+
+	if (self->value == NULL || tapNo == NULL || tapNo->value == NULL ){
 		float f;
 		f = 0.0f;
 		self->value_set(self, &f);
 	}
-
-    address += *(I2C_DeviceAddress*)getSiblingByKey(self, "TapNo")->value;
+    tapNo = getSiblingByKey(self, "TapNo");
+    address += *(I2C_DeviceAddress*)tapNo->value;
     msg.id = KegMaster_SateliteMsgId_ADCRead;
 	msg.data.adc.id = 0;
 	msg.data.adc.value = 0;
@@ -342,6 +333,7 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self){
 
 	return((int)pressure);
 }
+
 
 int KegItem_HwGetQtyAvail(KegItem_obj* self) {
 	I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
@@ -385,6 +377,47 @@ KegItem Db access interface
 KegItem data processing callback functions
  - This is where either data will be 'cleaned' or otherwise acted upon.
 -----------------------------------------------------------------------------*/
+int KegItem_ProcPourEn(KegItem_obj* self) {
+    #define POUR_DELAY 5.0f /* Seconds */ 
+
+    int ret = 0;
+    KegItem_obj* avail;
+    KegItem_obj* rsrv;
+    KegItem_obj* sz_pour;
+    KegItem_obj* sz_smpl;
+    bool disable = false;
+
+    I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
+    int* err;
+    KegMaster_SatelliteMsgType msg;
+    bool result;
+
+    avail = getSiblingByKey(self, "QtyAvailable");
+    rsrv = getSiblingByKey(self, "QtyReserve");
+    sz_pour = getSiblingByKey(self, "PourQtyGlass");
+    sz_smpl = getSiblingByKey(self, "PourQtySample");
+
+    /* Send message */
+    address += *(I2C_DeviceAddress*)getSiblingByKey(self, "TapNo")->value;
+    msg.id = KegMaster_SateliteMsgId_InterruptRead;
+    msg.data.intrpt.id = 0;
+    msg.data.intrpt.count = 0;
+    result = -1;
+    ///result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), &msg, sizeof(msg));
+
+    // Disable pour temporarily if we've poured enough for now
+    //if(pourEn && qty > pourQty )
+    //self->value_set(self, &disable);
+
+    // Disable pour if avail drops below reserve value
+    if (*(int*)avail->value < *(int*)rsrv->value) {
+        self->value_set(self, &disable);
+    }
+
+    return(ret);
+}
+
+
 int KegItem_ProcPressureCrnt(KegItem_obj* self)
 {
     #define DWELL_MIN 0.02f
@@ -438,16 +471,20 @@ int KegItem_ProcPressureCrnt(KegItem_obj* self)
 
 
 int KegItem_ProcDateAvail(KegItem_obj* self) {
+    bool b;
     KegItem_obj* keg_item;
-    //time_t t = time(NULL);
-    //struct tm tm = *localtime(&t);
+    time_t t = time(NULL);
+    struct tm time = *localtime(&t);
+    if(self->value == NULL) {
+        return(0);
+    }
 
     //KegMaster_SatelliteMsgType msg;
-    keg_item = getSiblingByKey(self, "PressureDwellTime");
-    if (keg_item->value != NULL) {
-        //dwell_time += *(float*)keg_item->value;
+    if( b = dateTimeCompare(self->value, &time) ){
+        keg_item = getSiblingByKey(self, "PourEn");
+        keg_item->value_set(keg_item, &b);
     }
-    //keg_item->value_set(keg_item, &dwell_time);
+
     return(0);
 }
 
@@ -472,4 +509,23 @@ static KegItem_obj* getSiblingByKey(KegItem_obj* self, char* key)
 	} while (this != self);
 
 	return(item);
+}
+
+static bool dateTimeCompare(struct tm* base, struct tm* challenge) {
+    bool gt;
+
+    if (base == NULL || challenge == NULL )
+    {
+        return(0);
+    }
+    /* Only compare date and time */
+    gt = 0;
+    gt |= challenge->tm_year > base->tm_year ? true : false;
+    gt |= challenge->tm_mon  > base->tm_mon  ? true : false;
+    gt |= challenge->tm_mday > base->tm_mday ? true : false;
+    gt |= challenge->tm_hour > base->tm_hour ? true : false;
+    gt |= challenge->tm_min  > base->tm_min  ? true : false;
+    gt |= challenge->tm_sec  > base->tm_sec  ? true : false;
+
+    return(gt);
 }

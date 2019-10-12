@@ -120,6 +120,7 @@ KegItem Db access interface
 /*=============================================================================
 KegItem data processing callback 'cleaner' functions
 =============================================================================*/
+int KegItem_ProcPourEn(KegItem_obj* self);
 int KegItem_ProcPressureCrnt(KegItem_obj* self);
 int KegItem_ProcDateAvail(KegItem_obj* self);
 
@@ -132,14 +133,21 @@ static __inline KegItem_obj* KegItem_ListGetLast(KegItem_obj* self)
 	return( (self->prev == NULL || self->prev == self) ? self : self->prev);
 }
 
-static __inline KegItem_obj* KegItem_ListInsertAfter(KegItem_obj* pivot, KegItem_obj* next)
+static __inline KegItem_obj* KegItem_ListInsertBefore(KegItem_obj* pivot, KegItem_obj* prev)
 {
-	next->next = pivot->next;
-	next->prev = pivot;
+    KegItem_obj* old_prev;
+    old_prev = pivot->prev;
 
-	pivot->next->prev = next;
-	pivot->next = next;
+    /* old_prev <--> [------] <--> pivot <--> next */
 
-	return(next);
+    /* old_prev <--> new_prev x--x pivot <--> next */
+    prev->prev = old_prev;
+    old_prev->next = prev;
+
+    /* old_prev <--> new_prev <--> pivot <--> next */
+    prev->next = pivot;
+    pivot->prev = prev;
+
+	return(pivot);
 }
 
