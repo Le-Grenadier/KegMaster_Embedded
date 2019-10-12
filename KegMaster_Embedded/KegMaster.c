@@ -14,6 +14,7 @@
 #include "azureiot/iothub_device_client_ll.h"
 #include "epoll_timerfd_utilities.h"
 #include "parson.h"
+#include "unistd.h"
 
 #include "ConnectionStringPrv.h"
 #include "KegMaster.h"
@@ -28,29 +29,30 @@ KegMaster_obj* km[4] = { NULL };
 	/* Order dependent for ease of indexing, I'll probably remove it in the morning */
 	/* Only one dependency allowed per field atm									*/		
 	/*------------------------------------------------------------------------------*/
-	/*  This field			KegItem_ValueType,		update-cb					processing-cb				Update Rate */	
-	{ "Id",				    KegItem_TypeSTR,		NULL,						NULL,		        		0.0f			}, /* KegMaster_FieldId	*/
-		{ "Alerts",				KegItem_TypeSTR,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdAlerts*/
-	{ "TapNo",				KegItem_TypeINT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdTapNo */
-	{ "Name",				KegItem_TypeSTR,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdName */
-	{ "Style",				KegItem_TypeSTR,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdStyle */
-	{ "Description",		KegItem_TypeSTR,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdDescription */
-	{ "DateKegged",			KegItem_TypeDATE,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdDateKegged */
-	{ "DateAvail",			KegItem_TypeDATE,		NULL,						KegItem_ProcDateAvail,      60.0f*60.0f			}, /* KegMaster_FieldIdDateAvail */
-	{ "PourEn",				KegItem_TypeBOOL,		NULL,						KegItem_ProcPourEn,         5.0f			}, /* KegMaster_FieldIdPourEn */
-		{ "PourNotification",	KegItem_TypeBOOL,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPourNotify */
-	{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPourQtyGlass */
-		{ "PourQtySample",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPourQtySample */
-	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	KegItem_ProcPressureCrnt,	15.0f			}, /* KegMaster_FieldIdPressureCrnt */
-	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPressureDsrd */
-    { "PressureDwellTime",	KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPressureDwellTime */
-	{ "PressureEn",			KegItem_TypeBOOL,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdPressureEn */
-	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                       15.0f			}, /* KegMaster_FieldIdQtyAvailable */
-	{ "QtyReserve",			KegItem_TypeFLOAT,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdQtyReserve */
-	{ "Version",			KegItem_TypeSTR,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdVersion */
-	{ "CreatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdCreatedAt */
-	{ "UpdatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15.0f			}, /* KegMaster_FieldIdUpdatedAt */
-	{ "Deleted",			KegItem_TypeBOOL,		NULL,						NULL,					    15.0f			}  /* KegMaster_FieldIdDeleted */
+     // TODO - Push changes to device rather than poll
+	/*  This field			KegItem_ValueType,		update-cb					processing-cb				update Rate         re-query Rate */	
+	{ "Id",				    KegItem_TypeSTR,		NULL,						NULL,		        		0.0f,		        0.0f        }, /* KegMaster_FieldId	*/
+		{ "Alerts",				KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdAlerts*/
+	{ "TapNo",				KegItem_TypeINT,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdTapNo */
+	{ "Name",				KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdName */
+	{ "Style",				KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdStyle */
+	{ "Description",		KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdDescription */
+	{ "DateKegged",			KegItem_TypeDATE,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdDateKegged */
+	{ "DateAvail",			KegItem_TypeDATE,		NULL,						KegItem_ProcDateAvail,      60*60.0f,	        30*60.0f    }, /* KegMaster_FieldIdDateAvail */
+	{ "PourEn",				KegItem_TypeBOOL,		NULL,						KegItem_ProcPourEn,         5.0f,		        30.0f       }, /* KegMaster_FieldIdPourEn */
+		{ "PourNotification",	KegItem_TypeBOOL,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdPourNotify */
+	{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        10*60.0f    }, /* KegMaster_FieldIdPourQtyGlass */
+		{ "PourQtySample",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        10*60.0f    }, /* KegMaster_FieldIdPourQtySample */
+	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	KegItem_ProcPressureCrnt,	15.0f,		        0.0f        }, /* KegMaster_FieldIdPressureCrnt */
+	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        60.0f       }, /* KegMaster_FieldIdPressureDsrd */
+    { "PressureDwellTime",	KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdPressureDwellTime */
+	{ "PressureEn",			KegItem_TypeBOOL,		NULL,						NULL,						15.0f,		        60.0f       }, /* KegMaster_FieldIdPressureEn */
+	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                       15.0f,		        0.0f        }, /* KegMaster_FieldIdQtyAvailable */
+	{ "QtyReserve",			KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        60.0f       }, /* KegMaster_FieldIdQtyReserve */
+	{ "Version",			KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdVersion */
+	{ "CreatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdCreatedAt */
+	{ "UpdatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdUpdatedAt */
+	{ "Deleted",			KegItem_TypeBOOL,		NULL,						NULL,					    15.0f,		        0.0f        }  /* KegMaster_FieldIdDeleted */
 	};
 
 
@@ -121,6 +123,7 @@ KegMaster_obj* KegMaster_createKeg(JSON_Value* jsonRoot, KegMaster_obj* keg){
         keg->field_GetByKey = KegMaster_getFieldByKey;
         keg->field_getJson = KegMaster_getJson;
         keg->run = KegMaster_execute;
+        keg->queryDb = KegMaster_RequestKegData;
     }
 
 	jsonArray = json_value_get_array(jsonRoot);
@@ -138,6 +141,7 @@ KegMaster_obj* KegMaster_createKeg(JSON_Value* jsonRoot, KegMaster_obj* keg){
         /* Update existing data else create new */
         ki = keg->field_GetByKey(keg, jsonKey);
 		ki = (ki == NULL) ? keg->field_add(keg, jsonKey) : ki;
+
 		switch (ki->value_type){
 			bool type_bool;
 			float type_float;
@@ -183,21 +187,35 @@ int KegMaster_execute(KegMaster_obj* self)
 {
 	KegItem_obj* e;
 	char* c; 
+    bool doQuery;
+    bool doProc;
+    struct timespec ts;
 
 	e = self->fields;
-	if (e == NULL)
-	{
+	if (e == NULL){
 		return( false );
 	}
 
-	do
-	{
-        if (e->value_refresh != NULL) {
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    do{
+        doQuery = (e->query_timeNext.tv_sec < ts.tv_sec) && (e->queryPeriod != 0);
+        doProc = (e->refresh_timeNext.tv_sec < ts.tv_sec) && (e->refreshPeriod != 0);
+        
+        if (doQuery) {
+            clock_gettime(CLOCK_REALTIME, &e->query_timeNext);
+            e->query_timeNext.tv_sec += e->queryPeriod;
+            self->queryDb((*(int*)self->field_GetByKey(self, "TapNo")->value), e->key);
+        }
+
+        if (doProc && e->value_refresh != NULL) {
+            clock_gettime(CLOCK_REALTIME, &e->refresh_timeNext);
+            e->refresh_timeNext.tv_sec += e->refreshPeriod;
+
             e->value_refresh(e);
         }
 
-		if(e->value_proc != NULL)
-		{
+		if(doProc && e->value_proc != NULL){
 			char* j;
 			char* s;
 			size_t sz;
@@ -244,7 +262,7 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
 		}
 	}
     newItem = KegItem_Create(fieldDef->name, fieldDef->type);
-    newItem = KegItem_init(newItem, fieldDef->update, fieldDef->update_rate, fieldDef->proc );
+    newItem = KegItem_init(newItem, fieldDef->update, fieldDef->update_rate, fieldDef->proc, fieldDef->queryRate );
 
     self->fields = (self->fields == NULL) ? newItem : KegItem_ListInsertBefore(self->fields, newItem);
 
@@ -275,8 +293,7 @@ KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
 }
 
 /* Calling this function destroys cached data cache after passing it back */
-char* KegMaster_getJson(KegMaster_obj* self)
-{
+char* KegMaster_getJson(KegMaster_obj* self){
 	static const char* JSON_GRP = "{%s, %s}";
 	size_t s;
 	char* c;
@@ -300,13 +317,18 @@ char* KegMaster_getJson(KegMaster_obj* self)
 }
 
 
-void KegMaster_RequestKegData(int tapNo)
-{
-	static const char* JSON_GRP = "{\"ReqId\": \"none\", \"TapNo\":\"%d\"}";
+void KegMaster_RequestKegData(int tapNo, char* select){
+    #define SELECT_ALL "*"
+
+	static const char* JSON_GRP = "{\"ReqId\": \"none\", \"TapNo\":\"%d\", \"qrySelect\":\"%s\"}";
 	size_t s;
 	char* c;
-	s = strlen(JSON_GRP) + 4 /* up to 9999 Taps? ^_^ */;
+    if (select == NULL) {
+        select = SELECT_ALL;
+    }
+
+	s = strlen(JSON_GRP) + strlen(select) + 4 /* up to 9999 Taps? ^_^ */;
 	c = malloc(s);
-	snprintf(c, s, JSON_GRP, tapNo);
+	snprintf(c, s, JSON_GRP, tapNo, select);
 	AzureIoT_SendMessage(c);
 }

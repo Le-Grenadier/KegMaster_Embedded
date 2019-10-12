@@ -54,7 +54,7 @@ int main(void)
 	KegMaster_initRemote();
 	KegMaster_initLocal();
 	KegMaster_initProcs();
-	KegMaster_RequestKegData(0);
+	KegMaster_RequestKegData(0, NULL);
 	
 	/* Init polling handler */
 	epollFd = CreateEpollFd();
@@ -74,11 +74,23 @@ int main(void)
     while (true) {
 		 int value; 
 		
-		 if (km[0] != NULL)
-		 {
-			 km[0]->run(km[0]);
-		 }
-		 
+         // TODO: These should be threads
+         if (km[0] != NULL) {
+             km[0]->run(km[0]);
+         }
+         // TODO: These should be threads
+         if (km[1] != NULL) {
+             km[1]->run(km[1]);
+         }
+         // TODO: These should be threads
+         if (km[2] != NULL) {
+             km[2]->run(km[2]);
+         }
+         // TODO: These should be threads
+         if (km[3] != NULL) {
+             km[3]->run(km[3]);
+         }
+
 		 value += 1;
 		 value %= 8;
 

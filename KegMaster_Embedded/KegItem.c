@@ -82,15 +82,23 @@ KegItem_obj* KegItem_init(
 	KegItem_obj* self,
 	KegItem_funcInt* value_refresh,
 	float refresh_period,
-	KegItem_funcInt* value_proc
-	)
+	KegItem_funcInt* value_proc,
+    float queryRate
+)
 {
 	//assert(((value_refresh != NULL)) || (value_proc != NULL));
 
 	/* Copy functions into object */
 	self->value_refresh = value_refresh;
-	self->refresh_period = refresh_period;
+	self->refreshPeriod = refresh_period;
 	self->value_proc = value_proc;
+    self->queryPeriod = queryRate;
+
+    clock_gettime(CLOCK_REALTIME, &self->refresh_timeNext);
+    self->refresh_timeNext.tv_sec += self->refreshPeriod;
+
+    clock_gettime(CLOCK_REALTIME, &self->query_timeNext);
+    self->query_timeNext.tv_sec += self->queryPeriod;
 
 	return(self);
 }

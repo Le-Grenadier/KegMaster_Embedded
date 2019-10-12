@@ -27,7 +27,9 @@ typedef int (KegItem_funcProc(KegItem_obj* self));
 typedef KegItem_obj* (KegItem_funcInit(KegItem_obj* self,
 	KegItem_funcInt* value_refresh,
 	float refresh_period,
-	KegItem_funcProc* value_proc ) );
+	KegItem_funcProc* value_proc,
+    float queryRate
+    ) );
 
 struct KegItem_obj
 {
@@ -49,9 +51,11 @@ struct KegItem_obj
 	KegItem_funcChr* toJson;
 
 	/* Behavior */
-	int refresh_timeNext;
-	int refresh_timePrev; // Could be used for connectiviy issues
-	float refresh_period;
+	struct timespec refresh_timeNext;
+	time_t refreshPeriod;
+    struct timespec query_timeNext;
+    time_t queryPeriod;
+
 
 	KegItem_funcInt* value_refresh; /* Either Hw or Db assumed */
 	KegItem_funcProc* value_proc;	
@@ -76,7 +80,8 @@ KegItem_obj* KegItem_init(
 	KegItem_obj* self,
 	KegItem_funcInt* value_refresh,
 	float refresh_period,
-	KegItem_funcInt* value_proc
+	KegItem_funcInt* value_proc,
+    float queryRate
 );
 
 

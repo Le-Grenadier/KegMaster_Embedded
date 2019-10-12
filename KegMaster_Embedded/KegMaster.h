@@ -52,7 +52,7 @@ typedef KegItem_obj* (KegMaster_funcKegItem(KegMaster_obj* self, char* c));
 typedef KegMaster_obj* (KegMaster_funcKegMaster(char* guid));
 typedef char* (KegMaster_funcChar(KegMaster_obj* self));
 typedef int (KegMaster_funcInt(KegMaster_obj* self));
-
+typedef void (KegMaster_funcQryDb(int tapNo, char* select));
 
 struct KegMaster_obj
 {
@@ -69,7 +69,7 @@ struct KegMaster_obj
 	KegMaster_funcChar* field_getJson;
 	KegMaster_funcKegItem* field_add;
 	KegMaster_funcKegItem* field_GetByKey;
-
+    KegMaster_funcQryDb* queryDb;
 };
 
 struct KegMaster_FieldDefType
@@ -79,6 +79,7 @@ struct KegMaster_FieldDefType
 	KegItem_funcInt* update;
 	KegItem_funcInt* proc;
 	float            update_rate; /* Seconds */
+    float            queryRate;
 };
 
 int KegMaster_initRemote(void);
@@ -92,4 +93,4 @@ int KegMaster_execute(KegMaster_obj* self);
 KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field);
 KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key);
 char* KegMaster_getJson(KegMaster_obj* self);
-void KegMaster_RequestKegData(int tapNo);
+void KegMaster_RequestKegData(int tapNo, char* select);
