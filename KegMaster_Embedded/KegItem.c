@@ -503,7 +503,7 @@ Local functions
 static KegItem_obj* getSiblingByKey(KegItem_obj* self, char* key)
 {
 	KegItem_obj* this = NULL;
-	KegItem_obj* item;
+	KegItem_obj* item = NULL;
 	assert(key != NULL);
 
 	this = self;

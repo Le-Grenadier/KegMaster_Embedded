@@ -129,7 +129,7 @@ KegMaster_obj* KegMaster_createKeg(JSON_Value* jsonRoot, KegMaster_obj* keg){
 	jsonArray = json_value_get_array(jsonRoot);
 	jsonObj = json_array_get_object(jsonArray, 0); /* Azure function returns 0-??? number of rows */
 
-    // TODO: Loop through provided data instead of table
+    // TODO: Loop through provided data instead of table?
 	for (i = 0; i < cntOfArray(KegMaster_FieldDef); i++)
 	{
 		jsonKey = KegMaster_FieldDef[i].name;
@@ -299,11 +299,10 @@ char* KegMaster_getJson(KegMaster_obj* self){
 	char* c;
 	KegItem_obj* item;
 	item = self->field_GetByKey(self, "Id");
-	char* id = item->toJson(item);
-
-    if (self->fields_json == NULL) {
+    if (item == NULL || self->fields_json == NULL) {
         return(NULL);
     }
+	char* id = item->toJson(item);
 
 	s = strlen(self->fields_json) + strlen(id) + strlen(JSON_GRP);
 	c = malloc(s);
