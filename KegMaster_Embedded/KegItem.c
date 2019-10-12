@@ -318,7 +318,6 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self){
 		f = 0.0f;
 		self->value_set(self, &f);
 	}
-    tapNo = getSiblingByKey(self, "TapNo");
     address += *(I2C_DeviceAddress*)tapNo->value;
     msg.id = KegMaster_SateliteMsgId_ADCRead;
 	msg.data.adc.id = 0;

@@ -21,7 +21,7 @@ int TimerFd = -1;
 
 KegMaster_obj* e;
 EventData TEventData = { .eventHandler = &TestPeriodic };
-KegMaster_obj* km = NULL;
+extern KegMaster_obj* km[4];
 
 
 int main(void)
@@ -74,9 +74,9 @@ int main(void)
     while (true) {
 		 int value; 
 		
-		 if (km != NULL)
+		 if (km[0] != NULL)
 		 {
-			 km->run(km);
+			 km[0]->run(km[0]);
 		 }
 		 
 		 value += 1;

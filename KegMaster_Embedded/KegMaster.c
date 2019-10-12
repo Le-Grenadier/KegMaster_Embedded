@@ -19,9 +19,10 @@
 #include "KegMaster.h"
 #include "KegItem.h"
 
+KegMaster_obj* km[4] = { NULL };
 
 /* Available Data  */
- KegMaster_FieldDefType KegMaster_FieldDef[] =
+ static KegMaster_FieldDefType KegMaster_FieldDef[] =
 	{
 	/*------------------------------------------------------------------------------*/
 	/* Order dependent for ease of indexing, I'll probably remove it in the morning */
@@ -52,7 +53,6 @@
 	{ "Deleted",			KegItem_TypeBOOL,		NULL,						NULL,					    15.0f			}  /* KegMaster_FieldIdDeleted */
 	};
 
- extern KegMaster_obj* km;
 
 int KegMaster_initRemote()
 {
@@ -64,11 +64,11 @@ int KegMaster_initRemote()
 
 int KegMaster_initLocal()
 {
+    int             i;
 
-
-	//if (initI2c() == -1) {
-	//	return -1;
-	//}
+    for (i = 0; i < sizeof(km) / sizeof(km[0]); i++) {
+        km[i] = NULL;
+    }
 	return(0);
 }
 
@@ -79,7 +79,7 @@ int KegMaster_initProcs()
 	memset(&action, 0, sizeof(struct sigaction));
 	//action.sa_handler = TerminationHandler;
 	//sigaction(SIGTERM, &action, NULL);
-	AzureIoT_SetMessageReceivedCallback(KegMaster_createKeg);
+	AzureIoT_SetMessageReceivedCallback(KegMaster_procAzureIotMsg);
 
 	return(0);
 }
@@ -89,50 +89,60 @@ int KegMaster_dbGetKegData(void)
 	return(true);
 }
 
-void KegMaster_createKeg(const char* sqlRow)
-{
-	KegMaster_obj* keg;
+
+void KegMaster_procAzureIotMsg(const char* sqlRow) {
+    JSON_Value* jsonRoot = NULL;
+
+    /* Build Keg Definition from provided JSON */
+    jsonRoot = json_parse_string(sqlRow);
+    if (jsonRoot == NULL) {
+        Log_Debug("WARNING: Cannot parse the string as JSON content.\n");
+    }
+    else {
+        km[0] = KegMaster_createKeg(jsonRoot, km[0]);
+    }
+}
+
+
+KegMaster_obj* KegMaster_createKeg(JSON_Value* jsonRoot, KegMaster_obj* keg){
 	KegItem_obj* ki;
 	char* jsonKey;
-	JSON_Value* jsonRoot = NULL;
 	JSON_Array* jsonArray = NULL;
 	JSON_Object* jsonObj = NULL;
 	JSON_Value* jsonElem = NULL;
 	int i; 
 
-	/* Build Keg in memory and initialize fields */
-	keg = malloc(sizeof(KegMaster_obj));
-	memset(keg, 0, sizeof(KegMaster_obj)); /* Important for null comparisons */
+    if (keg == NULL) {
+        /* Build Keg in memory and initialize fields */
+        keg = malloc(sizeof(KegMaster_obj));
+        memset(keg, 0, sizeof(KegMaster_obj)); /* Important for null comparisons */
 
-	keg->field_add = KegMaster_fieldAdd;
-	keg->field_GetByKey = KegMaster_getFieldByKey;
-	keg->field_getJson = KegMaster_getJson;
-	keg->run = KegMaster_execute;
+        keg->field_add = KegMaster_fieldAdd;
+        keg->field_GetByKey = KegMaster_getFieldByKey;
+        keg->field_getJson = KegMaster_getJson;
+        keg->run = KegMaster_execute;
+    }
 
-	/* Build Keg Definition from provided JSON */
-	jsonRoot = json_parse_string(sqlRow);
-	if (jsonRoot == NULL) {
-		Log_Debug("WARNING: Cannot parse the string as JSON content.\n");
-	}
 	jsonArray = json_value_get_array(jsonRoot);
 	jsonObj = json_array_get_object(jsonArray, 0); /* Azure function returns 0-??? number of rows */
+
+    // TODO: Loop through provided data instead of table
 	for (i = 0; i < cntOfArray(KegMaster_FieldDef); i++)
 	{
 		jsonKey = KegMaster_FieldDef[i].name;
 		jsonElem = json_object_get_value(jsonObj, jsonKey);
-		if (jsonElem == NULL)
-		{
+		if (jsonElem == NULL){
 			continue;
 		}
 
-		ki = keg->field_add(keg, KegMaster_FieldDef[i].name);
-		switch (ki->value_type)
-		{
-			//bool type_bool;
+        /* Update existing data else create new */
+        ki = keg->field_GetByKey(keg, jsonKey);
+		ki = (ki == NULL) ? keg->field_add(keg, jsonKey) : ki;
+		switch (ki->value_type){
+			bool type_bool;
 			float type_float;
 			int type_int;
 			const char* type_str;
-            bool type_bool;
 
 			case KegItem_TypeFLOAT:
 				type_float = (float)json_value_get_number(jsonElem);
@@ -166,8 +176,7 @@ void KegMaster_createKeg(const char* sqlRow)
 		}
 	}
 
-
-	km = keg;
+    return(keg);
 }
 
 int KegMaster_execute(KegMaster_obj* self)
@@ -246,17 +255,21 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
 KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
 {
 	KegItem_obj* this = NULL;
-	KegItem_obj* item;
+	KegItem_obj* item = NULL;
 	assert(key != NULL);
 
+    if (self->fields == NULL) {
+        return(item);
+    }
+    
 	this = self->fields;
-	do {
+	do{
 		if (0 == memcmp(key, this->key, strlen(key))) {
 			item = this;
 			break;
 		}
 		this = this->next;
-	} while (this != self->fields);
+	}while(this != self->fields);
 
 	return(item);
 }

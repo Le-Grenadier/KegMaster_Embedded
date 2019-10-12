@@ -7,6 +7,7 @@
 #include "epoll_timerfd_utilities.h"
 
 #include "KegItem.h"
+#include "parson.h"
 
  /*=============================================================================
  Literal constants
@@ -85,7 +86,8 @@ int KegMaster_initLocal(void);
 int KegMaster_initProcs(void);
 
 int KegMaster_dbGetKegData(void);
-void KegMaster_createKeg(const char* sqlRow);
+void KegMaster_procAzureIotMsg(const char* sqlRow);
+KegMaster_obj* KegMaster_createKeg(JSON_Value* jsonRoot, KegMaster_obj* keg);
 int KegMaster_execute(KegMaster_obj* self);
 KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field);
 KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key);
