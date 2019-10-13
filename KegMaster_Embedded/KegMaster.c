@@ -2,6 +2,7 @@
  * Hardware Access interface for Keg Master
  */
 
+#include <errno.h>
 #include <assert.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -48,7 +49,7 @@ KegMaster_obj* km[4] = { NULL };
 	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        60.0f       }, /* KegMaster_FieldIdPressureDsrd */
     { "PressureDwellTime",	KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdPressureDwellTime */
 	{ "PressureEn",			KegItem_TypeBOOL,		NULL,						NULL,						15.0f,		        60.0f       }, /* KegMaster_FieldIdPressureEn */
-	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                       15.0f,		        0.0f        }, /* KegMaster_FieldIdQtyAvailable */
+	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                       5.0f,		        0.0f        }, /* KegMaster_FieldIdQtyAvailable */
 	{ "QtyReserve",			KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        60.0f       }, /* KegMaster_FieldIdQtyReserve */
 	{ "Version",			KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdVersion */
 	{ "CreatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdCreatedAt */
@@ -188,8 +189,9 @@ KegMaster_obj* KegMaster_createKeg(JSON_Value* jsonRoot, KegMaster_obj* keg){
 
 int KegMaster_execute(KegMaster_obj* self)
 {
-	KegItem_obj* e;
-	char* c; 
+    KegItem_obj* e;
+    KegItem_obj* TapNo;
+    char* c;
     bool doQuery;
     bool doProc;
     struct timespec ts;
@@ -201,14 +203,20 @@ int KegMaster_execute(KegMaster_obj* self)
 
     clock_gettime(CLOCK_REALTIME, &ts);
 
-    do{
+    do {
         doQuery = (e->query_timeNext.tv_sec < ts.tv_sec) && (e->queryPeriod != 0);
         doProc = (e->refresh_timeNext.tv_sec < ts.tv_sec) && (e->refreshPeriod != 0);
-        
-        if (doQuery) {
+        TapNo = self->field_GetByKey(self, "TapNo");
+        sem_trywait(&self->kegItem_semaphore);
+        if (errno == EAGAIN) {
+            Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_execute()");
+            return (0);
+        }
+
+        if (doQuery && TapNo != NULL) {
             clock_gettime(CLOCK_REALTIME, &e->query_timeNext);
             e->query_timeNext.tv_sec += e->queryPeriod;
-            self->queryDb((*(int*)self->field_GetByKey(self, "TapNo")->value), e->key);
+            self->queryDb((*(int*)TapNo->value), e->key);
         }
 
         if (doProc && e->value_refresh != NULL) {
@@ -219,29 +227,28 @@ int KegMaster_execute(KegMaster_obj* self)
         }
 
 		if(doProc && e->value_proc != NULL){
-			char* j;
-			char* s;
-			size_t sz;
 			e->value_proc(e);
-
-            if(e->value_dirty){
-                /* gather JSON and for later SQL db update */
-                j = e->toJson(e);
-                sz = self->fields_json == NULL ? 0 : strlen(self->fields_json);
-                sz += +strlen(j) + 1;
-                s = malloc(sz);
-                memset(s, 0, sz);
-                if (self->fields_json != NULL) { /* Add a comma for multiple fields */
-                    s = strcat(self->fields_json, ",");
-                }
-                s = strcat(s, j);
-                free(self->fields_json);
-                free(j);
-                self->fields_json = s;
-                }
 		}
 
-        sem_wait(&self->kegItem_semaphore);
+        if (e->value_dirty) {
+            char* j;
+            char* s;
+            size_t sz;
+
+            /* gather JSON and for later SQL db update */
+            j = e->toJson(e);
+            sz = self->fields_json == NULL ? 0 : strlen(self->fields_json);
+            sz += +strlen(j) + 1;
+            s = malloc(sz);
+            memset(s, 0, sz);
+            if (self->fields_json != NULL) { /* Add a comma for multiple fields */
+                s = strcat(self->fields_json, ",");
+            }
+            s = strcat(s, j);
+            free(self->fields_json);
+            free(j);
+            self->fields_json = s;
+        }
 		e = e->next;
         sem_post(&self->kegItem_semaphore);
 	} while (e != self->fields);
@@ -260,6 +267,12 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
 	KegItem_obj* newItem;
 	KegMaster_FieldDefType* fieldDef;
 
+    sem_trywait(&self->kegItem_semaphore);
+    if (errno == EAGAIN) {
+        Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_fieldAdd()");
+        return(0);
+    }
+
 	for (int i = 0; i < sizeof(KegMaster_FieldDef) / sizeof(KegMaster_FieldDef[0]); i++) {
         fieldDef = &KegMaster_FieldDef[i];
 		if (0 == strcmp(fieldDef->name, field)) {
@@ -269,7 +282,6 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
     newItem = KegItem_Create(fieldDef->name, fieldDef->type);
     newItem = KegItem_init(newItem, fieldDef->update, fieldDef->update_rate, fieldDef->proc, fieldDef->queryRate );
 
-    sem_wait(&self->kegItem_semaphore);
     self->fields = (self->fields == NULL) ? newItem : KegItem_ListInsertBefore(self->fields, newItem);
     sem_post(&self->kegItem_semaphore);
 
@@ -287,7 +299,11 @@ KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
         return(item);
     }
 
-    sem_wait(&self->kegItem_semaphore);
+    sem_trywait(&self->kegItem_semaphore);
+    if (errno == EAGAIN) {
+        Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_getFieldByKey()");
+        return(0);
+    }
 
 	this = self->fields;
 	do{

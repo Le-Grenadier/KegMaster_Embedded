@@ -7,11 +7,12 @@
 #include <applibs/gpio.h>
 #include <pthread.h>
 
+#include "azure_iot_utilities.h"
 #include "ConnectionStringPrv.h"
+#include "epoll_timerfd_utilities.h"
 #include "KegItem.h"
 #include "KegMaster.h"
-#include "epoll_timerfd_utilities.h"
-#include "azure_iot_utilities.h"
+#include "SatelitePicIntf.h"
 
 
 // Temp
@@ -24,7 +25,7 @@ KegMaster_obj* e;
 EventData TEventData = { .eventHandler = &TestPeriodic };
 extern KegMaster_obj* km[4];
 
-static int pt_AzureIotPeriodic(void);
+static void pt_AzureIotPeriodic(void* args);
 
 int main(void)
 {
@@ -48,6 +49,9 @@ int main(void)
 	KegMaster_initProcs();
 	KegMaster_RequestKegData(0, NULL);
 	
+    I2C__KegmasterInit();
+
+
 	/* Init polling handler */
 	epollFd = CreateEpollFd();
 	if (epollFd < 0) {
@@ -107,7 +111,7 @@ int main(void)
     }
 }
 
-static int pt_AzureIotPeriodic(void) {
+static void pt_AzureIotPeriodic(void* args) {
     int fd0 = GPIO_OpenAsOutput(8, GPIO_OutputMode_PushPull, GPIO_Value_High);
     const struct timespec sleepTime = { 10, 0 };
     int value;
@@ -116,7 +120,7 @@ static int pt_AzureIotPeriodic(void) {
         Log_Debug(
             "Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
             strerror(errno), errno);
-        return -1;
+        return;
     }
 
     while (1) {

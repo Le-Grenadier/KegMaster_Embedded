@@ -90,9 +90,9 @@ KegItem_obj* KegItem_init(
 
 	/* Copy functions into object */
 	self->value_refresh = value_refresh;
-	self->refreshPeriod = refresh_period;
+	self->refreshPeriod = (uint8_t)refresh_period;
 	self->value_proc = value_proc;
-    self->queryPeriod = queryRate;
+    self->queryPeriod = (uint8_t)queryRate;
 
     clock_gettime(CLOCK_REALTIME, &self->refresh_timeNext);
     self->refresh_timeNext.tv_sec += self->refreshPeriod;
@@ -146,8 +146,7 @@ int kegItem_setStr(KegItem_obj* self, void* value)
 		memset(self->value, 0, sz);
 	}
 
-	//NULL != strcpy(self->value, *(char**)value);
-	return(true);
+	return(NULL != strcpy(self->value, *(char**)value));
 };
 
 int kegItem_setBool(KegItem_obj* self, void* value)
@@ -331,7 +330,7 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self){
 	msg.data.adc.id = 0;
 	msg.data.adc.value = 0;
 	//result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&msg, sizeof(msg));  
-	pressure = (float)msg.data.adc.value; // Do some conversion here later 
+	pressure = (float)msg.data.adc.value; // Do some conversion here later (need to adjust for STP)
 	if (result != 0) {
 		err = (int*)errno;
 		Log_Debug("ERROR: TFMini Soft Reset Fail: errno=%d (%s)\n", err, strerror(err));
@@ -345,9 +344,10 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self){
 int KegItem_HwGetQtyAvail(KegItem_obj* self) {
 	I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
 	int* err;
-	KegMaster_SatelliteMsgType msg;
-	bool result;
-	float pressure;
+    KegMaster_SatelliteMsgType msg_tx;
+    KegMaster_SatelliteMsgType msg_rx;
+    bool result;
+	float weight;
 
 	if (self->value == NULL) {
 		float f;
@@ -356,18 +356,27 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
 	}
 
 	address += *(I2C_DeviceAddress*)getSiblingByKey(self, "TapNo")->value;
-	msg.id = KegMaster_SateliteMsgId_ADCRead;
-	msg.data.adc.id = 3;
-	msg.data.adc.value = 0;
-	//result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&msg, sizeof(msg));
-	pressure = (float)msg.data.adc.value; // Do some conversion here later  (need to adjust for STP)
-	if (result != 0) {
+    msg_tx.id = KegMaster_SateliteMsgId_ADCRead;
+    msg_tx.data.adc.id = 3;
+    msg_tx.data.adc.value = 0;
+    msg_tx.msg_trm = 0x04FF;
+	result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg_tx, sizeof(msg_tx), (uint8_t*)&msg_rx, sizeof(msg_rx));
+    weight = (float)msg_rx.data.adc.value; // Raw data
+    weight = weight - 146400;     // Offset for zero
+    weight = weight / 23.0f;      // convert to grams
+    weight = weight / 1000.0f;    // convert to liters
+
+	if (result != 1) {
 		err = errno;
 		Log_Debug("ERROR: TFMini Soft Reset Fail: errno=%d (%s)\n", (int)err, strerror(err));
-		pressure = 999999.9f;
+        weight = 999999.9f;
 	}
+    else {
+        self->value_set(self, &weight);
+        self->value_dirty = true;
+    }
 
-	return((int)pressure);
+	return(0); // Convert to liters
 }
 
 /*-----------------------------------------------------------------------------
@@ -487,8 +496,9 @@ int KegItem_ProcDateAvail(KegItem_obj* self) {
     }
 
     //KegMaster_SatelliteMsgType msg;
-    if( b = dateTimeCompare(self->value, &time) ){
-        keg_item = getSiblingByKey(self, "PourEn");
+    keg_item = getSiblingByKey(self, "PourEn");
+
+    if( (b = dateTimeCompare(self->value, &time)) && keg_item != NULL ){
         keg_item->value_set(keg_item, &b);
     }
 

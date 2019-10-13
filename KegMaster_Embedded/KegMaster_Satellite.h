@@ -6,7 +6,8 @@
 #ifndef KEGMASTER_SATELLITE_H
 #define KEGMASTER_SATELLITE_H
 
-typedef enum {
+#pragma pack(1) 
+typedef enum uint8_t {
 	KegMaster_SateliteMsgId_GpioRead,
 	KegMaster_SateliteMsgId_GpioSet,
 	KegMaster_SateliteMsgId_GpioSetDflt,
@@ -15,9 +16,9 @@ typedef enum {
 	KegMaster_SateliteMsgId_ADCRead
 }KegMaster_SatelliteMsgId;
 
-
+#pragma pack(1) 
 typedef struct {
-	KegMaster_SatelliteMsgId id;
+    uint8_t id;
 	union {
 		struct {
 			uint8_t id;
@@ -35,6 +36,7 @@ typedef struct {
 			uint32_t value;
 		} adc;
 	}data;
+    uint16_t msg_trm;
 } KegMaster_SatelliteMsgType;
 
 #endif
