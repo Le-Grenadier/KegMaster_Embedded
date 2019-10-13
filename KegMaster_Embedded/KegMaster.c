@@ -13,6 +13,7 @@
 #include "azure_iot_utilities.h"
 #include "azureiot/iothub_device_client_ll.h"
 #include "epoll_timerfd_utilities.h"
+#include "semaphore.h"
 #include "parson.h"
 #include "unistd.h"
 
@@ -124,6 +125,8 @@ KegMaster_obj* KegMaster_createKeg(JSON_Value* jsonRoot, KegMaster_obj* keg){
         keg->field_getJson = KegMaster_getJson;
         keg->run = KegMaster_execute;
         keg->queryDb = KegMaster_RequestKegData;
+
+        sem_init(&keg->kegItem_semaphore, 0, 1);
     }
 
 	jsonArray = json_value_get_array(jsonRoot);
@@ -238,7 +241,9 @@ int KegMaster_execute(KegMaster_obj* self)
                 }
 		}
 
+        sem_wait(&self->kegItem_semaphore);
 		e = e->next;
+        sem_post(&self->kegItem_semaphore);
 	} while (e != self->fields);
 
 	c = self->field_getJson(self);
@@ -264,7 +269,9 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
     newItem = KegItem_Create(fieldDef->name, fieldDef->type);
     newItem = KegItem_init(newItem, fieldDef->update, fieldDef->update_rate, fieldDef->proc, fieldDef->queryRate );
 
+    sem_wait(&self->kegItem_semaphore);
     self->fields = (self->fields == NULL) ? newItem : KegItem_ListInsertBefore(self->fields, newItem);
+    sem_post(&self->kegItem_semaphore);
 
 	return(newItem);
 }
@@ -279,7 +286,9 @@ KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
     if (self->fields == NULL) {
         return(item);
     }
-    
+
+    sem_wait(&self->kegItem_semaphore);
+
 	this = self->fields;
 	do{
 		if (0 == memcmp(key, this->key, strlen(key))) {
@@ -288,6 +297,8 @@ KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
 		}
 		this = this->next;
 	}while(this != self->fields);
+
+    sem_post(&self->kegItem_semaphore);
 
 	return(item);
 }

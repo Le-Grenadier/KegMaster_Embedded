@@ -3,6 +3,7 @@
  */
 
 #pragma once
+#include <semaphore.h>
 
 #include "epoll_timerfd_utilities.h"
 
@@ -70,6 +71,8 @@ struct KegMaster_obj
 	KegMaster_funcKegItem* field_add;
 	KegMaster_funcKegItem* field_GetByKey;
     KegMaster_funcQryDb* queryDb;
+    
+    sem_t kegItem_semaphore;
 };
 
 struct KegMaster_FieldDefType

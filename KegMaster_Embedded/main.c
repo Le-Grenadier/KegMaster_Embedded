@@ -120,10 +120,9 @@ static int pt_AzureIotPeriodic(void) {
     }
 
     while (1) {
+        GPIO_SetValue(fd0, (GPIO_Value)(value++ % 2));
         AzureIoT_DoPeriodicTasks();
         nanosleep(&sleepTime, NULL);
-\
-        GPIO_SetValue(fd0, (GPIO_Value)(value++%2));
     }
 }
 
