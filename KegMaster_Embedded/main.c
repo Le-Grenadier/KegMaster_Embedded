@@ -80,7 +80,7 @@ int main(void)
              nanosleep(&sleepTime, NULL);
 
              // TODO - re-request all data periodically
-             KegMaster_RequestKegData(0, NULL);
+            // KegMaster_RequestKegData(0, NULL);
          }
          // TODO: These should be threads
          if (km[1] != NULL) {

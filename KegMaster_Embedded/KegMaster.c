@@ -22,6 +22,10 @@
 #include "KegMaster.h"
 #include "KegItem.h"
 
+#define MIN 60.0f
+#define SEC 1.0f
+#define NO_UPDT 0.0f
+
 KegMaster_obj* km[4] = { NULL };
 
 /* Available Data  */
@@ -33,28 +37,28 @@ KegMaster_obj* km[4] = { NULL };
 	/*------------------------------------------------------------------------------*/
      // TODO - Push changes to device rather than poll
 	/*  This field			KegItem_ValueType,		update-cb					processing-cb				update Rate         re-query Rate */	
-	{ "Id",				    KegItem_TypeSTR,		NULL,						NULL,		        		0.0f,		        0.0f        }, /* KegMaster_FieldId	*/
-		{ "Alerts",				KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdAlerts*/
-	{ "TapNo",				KegItem_TypeINT,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdTapNo */
-	{ "Name",				KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdName */
-	{ "Style",				KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdStyle */
-	{ "Description",		KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdDescription */
-	{ "DateKegged",			KegItem_TypeDATE,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdDateKegged */
-	{ "DateAvail",			KegItem_TypeDATE,		NULL,						KegItem_ProcDateAvail,      60*60.0f,	        30*60.0f    }, /* KegMaster_FieldIdDateAvail */
-	{ "PourEn",				KegItem_TypeBOOL,		NULL,						KegItem_ProcPourEn,         5.0f,		        30.0f       }, /* KegMaster_FieldIdPourEn */
-		{ "PourNotification",	KegItem_TypeBOOL,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdPourNotify */
-	{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        10*60.0f    }, /* KegMaster_FieldIdPourQtyGlass */
-		{ "PourQtySample",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        10*60.0f    }, /* KegMaster_FieldIdPourQtySample */
-	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	KegItem_ProcPressureCrnt,	15.0f,		        0.0f        }, /* KegMaster_FieldIdPressureCrnt */
-	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        60.0f       }, /* KegMaster_FieldIdPressureDsrd */
-    { "PressureDwellTime",	KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdPressureDwellTime */
-	{ "PressureEn",			KegItem_TypeBOOL,		NULL,						NULL,						15.0f,		        60.0f       }, /* KegMaster_FieldIdPressureEn */
-	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                       5.0f,		        0.0f        }, /* KegMaster_FieldIdQtyAvailable */
-	{ "QtyReserve",			KegItem_TypeFLOAT,		NULL,						NULL,						15.0f,		        60.0f       }, /* KegMaster_FieldIdQtyReserve */
-	{ "Version",			KegItem_TypeSTR,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdVersion */
-	{ "CreatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdCreatedAt */
-	{ "UpdatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15.0f,		        0.0f        }, /* KegMaster_FieldIdUpdatedAt */
-	{ "Deleted",			KegItem_TypeBOOL,		NULL,						NULL,					    15.0f,		        0.0f        }  /* KegMaster_FieldIdDeleted */
+	{ "Id",				    KegItem_TypeSTR,		NULL,						NULL,		        		   NO_UPDT,		       NO_UPDT      }, /* KegMaster_FieldId	*/
+	{ "Alerts",				KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdAlerts*/
+	{ "TapNo",				KegItem_TypeINT,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdTapNo */
+	{ "Name",				KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdName */
+	{ "Style",				KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdStyle */
+	{ "Description",		KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdDescription */
+	{ "DateKegged",			KegItem_TypeDATE,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdDateKegged */
+	{ "DateAvail",			KegItem_TypeDATE,		NULL,						KegItem_ProcDateAvail,      60*MIN,	           120*MIN          }, /* KegMaster_FieldIdDateAvail */
+	{ "PourEn",				KegItem_TypeBOOL,		NULL,						KegItem_ProcPourEn,          5*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourEn */
+	{ "PourNotification",	KegItem_TypeBOOL,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPourNotify */
+	{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourQtyGlass */
+	{ "PourQtySample",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourQtySample */
+	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	KegItem_ProcPressureCrnt,	15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPressureCrnt */
+	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPressureDsrd */
+    { "PressureDwellTime",	KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPressureDwellTime */
+	{ "PressureEn",			KegItem_TypeBOOL,		NULL,						NULL,						15*MIN,	           120*MIN          }, /* KegMaster_FieldIdPressureEn */
+	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                        5*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdQtyAvailable */
+	{ "QtyReserve",			KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,	           120*MIN          }, /* KegMaster_FieldIdQtyReserve */
+	{ "Version",			KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdVersion */
+	{ "CreatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdCreatedAt */
+	{ "UpdatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdUpdatedAt */
+	{ "Deleted",			KegItem_TypeBOOL,		NULL,						NULL,					    15*MIN,		           NO_UPDT      }  /* KegMaster_FieldIdDeleted */
 	};
 
 
@@ -255,7 +259,7 @@ int KegMaster_execute(KegMaster_obj* self)
 
 	c = self->field_getJson(self);
     if(c) {
-        AzureIoT_SendMessage(c);
+        //AzureIoT_SendMessage(c);
         free(c);
     }
 	return(true);
@@ -356,5 +360,8 @@ void KegMaster_RequestKegData(int tapNo, char* select){
 	s = strlen(JSON_GRP) + strlen(select) + 4 /* up to 9999 Taps? ^_^ */;
 	c = malloc(s);
 	snprintf(c, s, JSON_GRP, tapNo, select);
-	AzureIoT_SendMessage(c);
+    if (select == "*") {
+        AzureIoT_SendMessage(c);
+    }
+    free(c);
 }

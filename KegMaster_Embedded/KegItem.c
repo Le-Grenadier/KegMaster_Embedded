@@ -90,9 +90,9 @@ KegItem_obj* KegItem_init(
 
 	/* Copy functions into object */
 	self->value_refresh = value_refresh;
-	self->refreshPeriod = (uint8_t)refresh_period;
+	self->refreshPeriod = (time_t)refresh_period;
 	self->value_proc = value_proc;
-    self->queryPeriod = (uint8_t)queryRate;
+    self->queryPeriod = (time_t)queryRate;
 
     clock_gettime(CLOCK_REALTIME, &self->refresh_timeNext);
     self->refresh_timeNext.tv_sec += self->refreshPeriod;
@@ -342,6 +342,10 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self){
 
 
 int KegItem_HwGetQtyAvail(KegItem_obj* self) {
+    #define WEIGHT_UPDT_TOL 100 /* Grams */ / 1000.0f
+
+    KegItem_obj* tapNo;
+    int          tapNo_value;
 	I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
 	int* err;
     KegMaster_SatelliteMsgType msg_tx;
@@ -355,7 +359,12 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
 		self->value_set(self, &f);
 	}
 
-	address += *(I2C_DeviceAddress*)getSiblingByKey(self, "TapNo")->value;
+    tapNo = getSiblingByKey(self, "TapNo");
+    if (tapNo == NULL) {
+        return(0);
+    }
+    tapNo_value = *(int*)tapNo->value;
+	address += tapNo_value;
     msg_tx.id = KegMaster_SateliteMsgId_ADCRead;
     msg_tx.data.adc.id = 3;
     msg_tx.data.adc.value = 0;
@@ -368,15 +377,20 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
 
 	if (result != 1) {
 		err = errno;
-		Log_Debug("ERROR: TFMini Soft Reset Fail: errno=%d (%s)\n", (int)err, strerror(err));
-        weight = 999999.9f;
+		Log_Debug("ERROR: Failed to get Keg %d weight: errno=%d (%s)\n", tapNo_value, strerror(err));
+        weight = INFINITY;
 	}
     else {
+        Log_Debug("INFO: Keg %d weighs %f\n", tapNo_value, weight);
         self->value_set(self, &weight);
+    }
+
+    /* Reduce message Tx spam (and Azure bill) - nly send update if change is notable */
+    if ((weight < INFINITY) && (abs((*(float*)self->value) - weight) > WEIGHT_UPDT_TOL)) {
         self->value_dirty = true;
     }
 
-	return(0); // Convert to liters
+	return(0);
 }
 
 /*-----------------------------------------------------------------------------
@@ -401,6 +415,8 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     KegItem_obj* rsrv;
     KegItem_obj* sz_pour;
     KegItem_obj* sz_smpl;
+    KegItem_obj* tapNo;
+
     bool disable = false;
 
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
@@ -412,9 +428,14 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     rsrv = getSiblingByKey(self, "QtyReserve");
     sz_pour = getSiblingByKey(self, "PourQtyGlass");
     sz_smpl = getSiblingByKey(self, "PourQtySample");
+    tapNo = getSiblingByKey(self, "TapNo");
+
+    if (tapNo == NULL || avail == NULL || rsrv == NULL || sz_pour == NULL || sz_smpl == NULL) {
+        return(0);
+    }
 
     /* Send message */
-    address += *(I2C_DeviceAddress*)getSiblingByKey(self, "TapNo")->value;
+    address += *(I2C_DeviceAddress*)tapNo->value;
     msg.id = KegMaster_SateliteMsgId_InterruptRead;
     msg.data.intrpt.id = 0;
     msg.data.intrpt.count = 0;
@@ -438,6 +459,8 @@ int KegItem_ProcPressureCrnt(KegItem_obj* self)
 {
     #define DWELL_MIN 0.02f
 
+    KegItem_obj* pressDsrd;
+    KegItem_obj* tapNo;
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
     float pressure_crnt;
     float pressure_dsrd;
@@ -451,8 +474,13 @@ int KegItem_ProcPressureCrnt(KegItem_obj* self)
         return(false);
     }
 
+    tapNo = getSiblingByKey(self, "TapNo");
+    pressDsrd = getSiblingByKey(self, "PressureDsrd");
+    if (tapNo == NULL || pressDsrd == NULL) {
+            return(0);
+    }
     pressure_crnt = *(float*)self->value;
-    pressure_dsrd = *(float*)getSiblingByKey(self, "PressureDsrd")->value;
+    pressure_dsrd = *(float*)pressDsrd->value;
     
     // [insert fancy control algorithm here] 
     /* For now, just proportional control
@@ -462,7 +490,7 @@ int KegItem_ProcPressureCrnt(KegItem_obj* self)
     dwell_time = fmaxf(dwell_time, DWELL_MIN);
 
     /* Send message */
-    address += *(I2C_DeviceAddress*)getSiblingByKey(self, "TapNo")->value;
+    address += *(I2C_DeviceAddress*)tapNo->value;
     msg.id = KegMaster_SateliteMsgId_GpioSet;
     msg.data.gpio.id = 1;
     msg.data.gpio.state = 1;
