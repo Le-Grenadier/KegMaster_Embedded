@@ -99,7 +99,6 @@ int main(void)
 		 value %= 8;
 
 		//GPIO_GetValue(fd0, &value);
-		GPIO_SetValue(fd1, (GPIO_Value)(value&2)==0);
 		GPIO_SetValue(fd2, (GPIO_Value)(value&4)==0);
 
         {

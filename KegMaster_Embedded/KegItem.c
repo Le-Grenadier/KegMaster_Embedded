@@ -381,13 +381,14 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
         weight = INFINITY;
 	}
     else {
+
+        /* Reduce message Tx spam (and Azure bill) - nly send update if change is notable */
+        if ((weight < INFINITY) && (abs((*(float*)self->value) - weight) > WEIGHT_UPDT_TOL)) {
+            self->value_dirty = true;
+        }
+
         Log_Debug("INFO: Keg %d weighs %f\n", tapNo_value, weight);
         self->value_set(self, &weight);
-    }
-
-    /* Reduce message Tx spam (and Azure bill) - nly send update if change is notable */
-    if ((weight < INFINITY) && (abs((*(float*)self->value) - weight) > WEIGHT_UPDT_TOL)) {
-        self->value_dirty = true;
     }
 
 	return(0);
@@ -416,6 +417,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     KegItem_obj* sz_pour;
     KegItem_obj* sz_smpl;
     KegItem_obj* tapNo;
+    KegItem_obj* pourEn;
 
     bool disable = false;
 
@@ -429,6 +431,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     sz_pour = getSiblingByKey(self, "PourQtyGlass");
     sz_smpl = getSiblingByKey(self, "PourQtySample");
     tapNo = getSiblingByKey(self, "TapNo");
+    pourEn = getSiblingByKey(self, "PourEn"); 
 
     if (tapNo == NULL || avail == NULL || rsrv == NULL || sz_pour == NULL || sz_smpl == NULL) {
         return(0);
@@ -436,11 +439,13 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
 
     /* Send message */
     address += *(I2C_DeviceAddress*)tapNo->value;
-    msg.id = KegMaster_SateliteMsgId_InterruptRead;
-    msg.data.intrpt.id = 0;
-    msg.data.intrpt.count = 0;
+    msg.id = KegMaster_SateliteMsgId_GpioSetDflt;
+    msg.data.gpio.id = 2;
+    msg.data.gpio.state = !(*(bool*)pourEn->value);
+    msg.data.gpio.holdTime = 5000;
+    msg.msg_trm = 0x04FF;
     result = -1;
-    ///result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), &msg, sizeof(msg));
+    result = I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg));
 
     // Disable pour temporarily if we've poured enough for now
     //if(pourEn && qty > pourQty )

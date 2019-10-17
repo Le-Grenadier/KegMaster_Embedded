@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <applibs/gpio.h>
 #include <applibs/log.h>
 #include "azure_iot_utilities.h"
 #include "azureiot/iothub_device_client_ll.h"
@@ -44,16 +45,16 @@ KegMaster_obj* km[4] = { NULL };
 	{ "Style",				KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdStyle */
 	{ "Description",		KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdDescription */
 	{ "DateKegged",			KegItem_TypeDATE,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdDateKegged */
-	{ "DateAvail",			KegItem_TypeDATE,		NULL,						KegItem_ProcDateAvail,      60*MIN,	           120*MIN          }, /* KegMaster_FieldIdDateAvail */
-	{ "PourEn",				KegItem_TypeBOOL,		NULL,						KegItem_ProcPourEn,          5*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourEn */
+	{ "DateAvail",			KegItem_TypeDATE,		NULL,						KegItem_ProcDateAvail,       1*MIN,	           120*MIN          }, /* KegMaster_FieldIdDateAvail */
+	{ "PourEn",				KegItem_TypeBOOL,		NULL,						KegItem_ProcPourEn,          5*SEC,		       120*MIN          }, /* KegMaster_FieldIdPourEn */
 	{ "PourNotification",	KegItem_TypeBOOL,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPourNotify */
 	{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourQtyGlass */
 	{ "PourQtySample",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourQtySample */
-	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	KegItem_ProcPressureCrnt,	15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPressureCrnt */
-	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPressureDsrd */
+	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	KegItem_ProcPressureCrnt,	15*SEC,		           NO_UPDT      }, /* KegMaster_FieldIdPressureCrnt */
+	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						NULL,						15*SEC,		       120*MIN          }, /* KegMaster_FieldIdPressureDsrd */
     { "PressureDwellTime",	KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPressureDwellTime */
 	{ "PressureEn",			KegItem_TypeBOOL,		NULL,						NULL,						15*MIN,	           120*MIN          }, /* KegMaster_FieldIdPressureEn */
-	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                        5*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdQtyAvailable */
+	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                       30*SEC,		           NO_UPDT      }, /* KegMaster_FieldIdQtyAvailable */
 	{ "QtyReserve",			KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,	           120*MIN          }, /* KegMaster_FieldIdQtyReserve */
 	{ "Version",			KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdVersion */
 	{ "CreatedAt",			KegItem_TypeDATE,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdCreatedAt */
@@ -61,6 +62,7 @@ KegMaster_obj* km[4] = { NULL };
 	{ "Deleted",			KegItem_TypeBOOL,		NULL,						NULL,					    15*MIN,		           NO_UPDT      }  /* KegMaster_FieldIdDeleted */
 	};
 
+ int fd1;
 
 int KegMaster_initRemote()
 {
@@ -73,6 +75,14 @@ int KegMaster_initRemote()
 int KegMaster_initLocal()
 {
     int             i;
+
+    fd1 = GPIO_OpenAsOutput(9, GPIO_OutputMode_PushPull, GPIO_Value_High);
+    if (fd1 < 0 ) {
+        Log_Debug(
+            "Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
+            strerror(errno), errno);
+        return -1;
+    }
 
     for (i = 0; i < sizeof(km) / sizeof(km[0]); i++) {
         km[i] = NULL;
@@ -100,6 +110,7 @@ int KegMaster_dbGetKegData(void)
 
 void KegMaster_procAzureIotMsg(const char* sqlRow) {
     JSON_Value* jsonRoot = NULL;
+    GPIO_Value_Type io;
 
     /* Build Keg Definition from provided JSON */
     jsonRoot = json_parse_string(sqlRow);
@@ -109,6 +120,10 @@ void KegMaster_procAzureIotMsg(const char* sqlRow) {
     else {
         km[0] = KegMaster_createKeg(jsonRoot, km[0]);
     }
+    
+    GPIO_GetValue(fd1, &io);
+    GPIO_SetValue(fd1, !io);
+
 }
 
 
@@ -252,6 +267,8 @@ int KegMaster_execute(KegMaster_obj* self)
             free(self->fields_json);
             free(j);
             self->fields_json = s;
+
+            e->value_dirty = false;
         }
 		e = e->next;
         sem_post(&self->kegItem_semaphore);
@@ -259,7 +276,7 @@ int KegMaster_execute(KegMaster_obj* self)
 
 	c = self->field_getJson(self);
     if(c) {
-        //AzureIoT_SendMessage(c);
+        AzureIoT_SendMessage(c);
         free(c);
     }
 	return(true);
@@ -360,8 +377,6 @@ void KegMaster_RequestKegData(int tapNo, char* select){
 	s = strlen(JSON_GRP) + strlen(select) + 4 /* up to 9999 Taps? ^_^ */;
 	c = malloc(s);
 	snprintf(c, s, JSON_GRP, tapNo, select);
-    if (select == "*") {
-        AzureIoT_SendMessage(c);
-    }
+    AzureIoT_SendMessage(c);
     free(c);
 }
