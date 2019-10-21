@@ -329,7 +329,7 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self){
     msg.id = KegMaster_SateliteMsgId_ADCRead;
 	msg.data.adc.id = 0;
 	msg.data.adc.value = 0;
-	//result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&msg, sizeof(msg));  
+	result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&msg, sizeof(msg));  
 	pressure = (float)msg.data.adc.value; // Do some conversion here later (need to adjust for STP)
 	if (result != 0) {
 		err = (int*)errno;
@@ -407,56 +407,94 @@ KegItem Db access interface
 /*-----------------------------------------------------------------------------
 KegItem data processing callback functions
  - This is where either data will be 'cleaned' or otherwise acted upon.
+ - TODO: Reduct function complexity
 -----------------------------------------------------------------------------*/
 int KegItem_ProcPourEn(KegItem_obj* self) {
-    #define POUR_DELAY 5.0f /* Seconds */ 
+    #define POUR_DELAY 5 /* Seconds */ 
+    #define POUR_INT_CNVT 1000 /* Interrupts per oz */
 
+    static const bool disable = false;
+    static struct timespec lockoutTimer = { 0, 0 };
+    
     int ret = 0;
     KegItem_obj* avail;
     KegItem_obj* rsrv;
-    KegItem_obj* sz_pour;
-    KegItem_obj* sz_smpl;
+    KegItem_obj* szPour;
+    KegItem_obj* szSmpl;
     KegItem_obj* tapNo;
     KegItem_obj* pourEn;
 
-    bool disable = false;
+    bool pourTimeout;
+    bool pourLevelOk;
+    uint16_t pourQty; 
+    struct timespec realTime;
 
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
     int* err;
-    KegMaster_SatelliteMsgType msg;
+    KegMaster_SatelliteMsgType qtyMsg;
+    KegMaster_SatelliteMsgType pourMsg;
+
     bool result;
 
     avail = getSiblingByKey(self, "QtyAvailable");
     rsrv = getSiblingByKey(self, "QtyReserve");
-    sz_pour = getSiblingByKey(self, "PourQtyGlass");
-    sz_smpl = getSiblingByKey(self, "PourQtySample");
+    szPour = getSiblingByKey(self, "PourQtyGlass");
+    szSmpl = getSiblingByKey(self, "PourQtySample");
     tapNo = getSiblingByKey(self, "TapNo");
     pourEn = getSiblingByKey(self, "PourEn"); 
+    clock_gettime(CLOCK_REALTIME, &realTime);
 
-    if (tapNo == NULL || avail == NULL || rsrv == NULL || sz_pour == NULL || sz_smpl == NULL) {
+    if (tapNo == NULL || avail == NULL || rsrv == NULL || szPour == NULL || szSmpl == NULL) {
         return(0);
     }
-
-    /* Send message */
+    /* Update Satellite MCU address */
     address += *(I2C_DeviceAddress*)tapNo->value;
-    msg.id = KegMaster_SateliteMsgId_GpioSetDflt;
-    msg.data.gpio.id = 2;
-    msg.data.gpio.state = !(*(bool*)pourEn->value);
-    msg.data.gpio.holdTime = 5000;
-    msg.msg_trm = 0x04FF;
+
+    /*=========================================================================
+    Qty Poured Already
+    =========================================================================*/
+    
+    /* Get Current qty poured */
+    qtyMsg.id = KegMaster_SateliteMsgId_InterruptRead;
+    qtyMsg.data.intrpt.id = 0;
+    qtyMsg.msg_trm = 0x04FF;
     result = -1;
-    result = I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg));
+    result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&qtyMsg, sizeof(qtyMsg), (uint8_t*)&qtyMsg, sizeof(qtyMsg));
+    pourQty = qtyMsg.data.intrpt.count / POUR_INT_CNVT;
 
-    // Disable pour temporarily if we've poured enough for now
-    //if(pourEn && qty > pourQty )
-    //self->value_set(self, &disable);
-
-    // Disable pour if avail drops below reserve value
-    if (*(int*)avail->value < *(int*)rsrv->value) {
-        self->value_set(self, &disable);
+    /*-------------------------------------------------------------------------
+    Disable pour temporarily if 
+       - not presently locked-out
+       - pouring enabled, glass has been dispensed
+       - pouring disabled, sampling enabled, and sample has been served 
+    -------------------------------------------------------------------------*/
+    if( (realTime.tv_sec >= lockoutTimer.tv_sec )
+     && ( (*(bool*)pourEn->value) && pourQty >= (*(float*)szPour->value) )
+       || (!(*(bool*)pourEn->value) && (*(float*)szSmpl->value) > 0.1f && pourQty >= (*(float*)szSmpl->value) ) ){
+        lockoutTimer.tv_sec = realTime.tv_sec + POUR_DELAY;
     }
 
-    return(ret);
+    /*=========================================================================
+    Stop if below reserve value
+    =========================================================================*/
+    if (*(float*)avail->value < *(float*)rsrv->value) {
+        self->value_set(self, &disable);
+        self->value_dirty = true;
+    }
+
+    /*=========================================================================
+    Set ouput state
+    =========================================================================*/
+    /* Enable Pouring based on state, if not locked-out */
+    pourMsg.id = KegMaster_SateliteMsgId_GpioSetDflt;
+    pourMsg.data.gpio.id = 2;
+    pourMsg.data.gpio.state = (*(bool*)pourEn->value) && (realTime.tv_sec >= lockoutTimer.tv_sec);
+    pourMsg.data.gpio.holdTime = POUR_DELAY;
+    pourMsg.msg_trm = 0x04FF;
+    result = -1;
+    result = I2CMaster_Write(i2cFd, address, (uint8_t*)&pourMsg, sizeof(pourMsg));
+
+    return(ret=1);
 }
 
 

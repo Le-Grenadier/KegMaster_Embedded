@@ -46,7 +46,7 @@ KegMaster_obj* km[4] = { NULL };
 	{ "Description",		KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdDescription */
 	{ "DateKegged",			KegItem_TypeDATE,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdDateKegged */
 	{ "DateAvail",			KegItem_TypeDATE,		NULL,						KegItem_ProcDateAvail,       1*MIN,	           120*MIN          }, /* KegMaster_FieldIdDateAvail */
-	{ "PourEn",				KegItem_TypeBOOL,		NULL,						KegItem_ProcPourEn,          5*SEC,		       120*MIN          }, /* KegMaster_FieldIdPourEn */
+	{ "PourEn",				KegItem_TypeBOOL,		NULL,						KegItem_ProcPourEn,          1*SEC,		       120*MIN          }, /* KegMaster_FieldIdPourEn */
 	{ "PourNotification",	KegItem_TypeBOOL,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPourNotify */
 	{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourQtyGlass */
 	{ "PourQtySample",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourQtySample */
