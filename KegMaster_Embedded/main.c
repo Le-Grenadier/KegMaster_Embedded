@@ -23,7 +23,8 @@ int TimerFd = -1;
 
 KegMaster_obj* e;
 EventData TEventData = { .eventHandler = &TestPeriodic };
-extern KegMaster_obj* km[4];
+extern KegMaster_obj** km;
+extern int             km_cnt;
 
 static void pt_AzureIotPeriodic(void* args);
 
@@ -32,9 +33,8 @@ int main(void)
     pthread_t pt_AzureIot;
     int pt_AzureRet;
 
-    int fd1 = GPIO_OpenAsOutput(9, GPIO_OutputMode_PushPull, GPIO_Value_High);
 	int fd2 = GPIO_OpenAsOutput(10, GPIO_OutputMode_PushPull, GPIO_Value_High);
-    if ( fd1 < 0  || fd2 < 0 ) {
+    if ( fd2 < 0 ) {
         Log_Debug(
             "Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
             strerror(errno), errno);
@@ -71,8 +71,8 @@ int main(void)
         int value;
 
          // TODO: These should be threads
-         if (km[0] != NULL) {
-             km[0]->run(km[0]);
+        if (km_cnt >= 1) {
+            km[0]->run(km[0]);
          }
          else {
              /* Slow down the processing to try and help avoid racking up a huge bill if I make a mistake */
@@ -83,15 +83,15 @@ int main(void)
             // KegMaster_RequestKegData(0, NULL);
          }
          // TODO: These should be threads
-         if (km[1] != NULL) {
+         if (km_cnt > 1) {
              km[1]->run(km[1]);
          }
          // TODO: These should be threads
-         if (km[2] != NULL) {
+         if (km_cnt > 2) {
              km[2]->run(km[2]);
          }
          // TODO: These should be threads
-         if (km[3] != NULL) {
+         if (km_cnt > 3) {
              km[3]->run(km[3]);
          }
 

@@ -27,7 +27,8 @@
 #define SEC 1.0f
 #define NO_UPDT 0.0f
 
-KegMaster_obj* km[4] = { NULL };
+KegMaster_obj** km;
+int            km_cnt = 0;
 
 /* Available Data  */
  static KegMaster_FieldDefType KegMaster_FieldDef[] =
@@ -74,8 +75,6 @@ int KegMaster_initRemote()
 
 int KegMaster_initLocal()
 {
-    int             i;
-
     fd1 = GPIO_OpenAsOutput(9, GPIO_OutputMode_PushPull, GPIO_Value_High);
     if (fd1 < 0 ) {
         Log_Debug(
@@ -84,9 +83,8 @@ int KegMaster_initLocal()
         return -1;
     }
 
-    for (i = 0; i < sizeof(km) / sizeof(km[0]); i++) {
-        km[i] = NULL;
-    }
+    km = NULL;
+ 
 	return(0);
 }
 
@@ -118,24 +116,20 @@ void KegMaster_procAzureIotMsg(const char* sqlRow) {
         Log_Debug("WARNING: Cannot parse the string as JSON content.\n");
     }
     else {
-        km[0] = KegMaster_createKeg(jsonRoot, km[0]);
+        KegMaster_updateKeg(jsonRoot, &km, km_cnt);
     }
     
+    /* Green LED */
     GPIO_GetValue(fd1, &io);
     GPIO_SetValue(fd1, !io);
 
 }
 
+KegMaster_obj* KegMaster_getKegPtr(KegMaster_obj*** keg_root, int idx) {
+    KegMaster_obj* keg;
+    KegMaster_obj* temp;
 
-KegMaster_obj* KegMaster_createKeg(JSON_Value* jsonRoot, KegMaster_obj* keg){
-	KegItem_obj* ki;
-	char* jsonKey;
-	JSON_Array* jsonArray = NULL;
-	JSON_Object* jsonObj = NULL;
-	JSON_Value* jsonElem = NULL;
-	int i; 
-
-    if (keg == NULL) {
+    if (keg_root == NULL || idx >= km_cnt) {
         /* Build Keg in memory and initialize fields */
         keg = malloc(sizeof(KegMaster_obj));
         memset(keg, 0, sizeof(KegMaster_obj)); /* Important for null comparisons */
@@ -147,12 +141,32 @@ KegMaster_obj* KegMaster_createKeg(JSON_Value* jsonRoot, KegMaster_obj* keg){
         keg->queryDb = KegMaster_RequestKegData;
 
         sem_init(&keg->kegItem_semaphore, 0, 1);
+
+        km_cnt++;
+        *keg_root = realloc(*keg_root, sizeof(KegMaster_obj*) * km_cnt);
+        *keg_root[idx] = keg;
     }
+    return((*keg_root)[idx]);
+}
 
-	jsonArray = json_value_get_array(jsonRoot);
-	jsonObj = json_array_get_object(jsonArray, 0); /* Azure function returns 0-??? number of rows */
+KegMaster_obj* KegMaster_updateKeg(JSON_Value* jsonRoot, KegMaster_obj*** keg_root, int keg_cnt){
+    KegMaster_obj* keg;
+	KegItem_obj* ki;
+	char* jsonKey;
+	JSON_Array* jsonArray = NULL;
+	JSON_Object* jsonObj = NULL;
+	JSON_Value* jsonElem = NULL;
+	int i; 
 
-    // TODO: Loop through provided data instead of table?
+    /* Get Json data */
+    jsonArray = json_value_get_array(jsonRoot);
+    jsonObj = json_array_get_object(jsonArray, 0);
+
+    /* Get pointer to keg object */
+    jsonElem = json_object_get_value(jsonObj, "TapNo");
+    keg = KegMaster_getKegPtr(keg_root, (int)json_value_get_number(jsonElem));
+
+    /* Populate / Update Keg */
 	for (i = 0; i < cntOfArray(KegMaster_FieldDef); i++)
 	{
 		jsonKey = KegMaster_FieldDef[i].name;
@@ -276,6 +290,7 @@ int KegMaster_execute(KegMaster_obj* self)
 
 	c = self->field_getJson(self);
     if(c) {
+        Log_Debug("INFO: IoT Hub Message - %s\n", c);
         AzureIoT_SendMessage(c);
         free(c);
     }
@@ -377,6 +392,9 @@ void KegMaster_RequestKegData(int tapNo, char* select){
 	s = strlen(JSON_GRP) + strlen(select) + 4 /* up to 9999 Taps? ^_^ */;
 	c = malloc(s);
 	snprintf(c, s, JSON_GRP, tapNo, select);
+
+    Log_Debug("INFO: IoT Hub Message - %s\n", c);
+
     AzureIoT_SendMessage(c);
     free(c);
 }

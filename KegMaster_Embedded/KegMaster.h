@@ -91,7 +91,9 @@ int KegMaster_initProcs(void);
 
 int KegMaster_dbGetKegData(void);
 void KegMaster_procAzureIotMsg(const char* sqlRow);
-KegMaster_obj* KegMaster_createKeg(JSON_Value* jsonRoot, KegMaster_obj* keg);
+/* Next two functions take a pointer to an array (pointer) of pointers */
+KegMaster_obj* KegMaster_getKegPtr(KegMaster_obj*** keg_root, int idx);
+KegMaster_obj* KegMaster_updateKeg(JSON_Value* jsonRoot, KegMaster_obj*** keg_root, int keg_cnt);
 int KegMaster_execute(KegMaster_obj* self);
 KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field);
 KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key);

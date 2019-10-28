@@ -96,5 +96,8 @@
     <ClInclude Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\parson.h">
       <Filter>Lib\json</Filter>
     </ClInclude>
+    <ClInclude Include="KegMaster_Satellite.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

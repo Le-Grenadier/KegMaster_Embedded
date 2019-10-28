@@ -108,8 +108,12 @@ KegItem Object Value Setter functions
 -----------------------------------------------------------------------------*/
 int kegItem_setFloat(KegItem_obj* self, void* value)
 {
-	if (self->value == NULL)
-	{
+    if (value == NULL) {
+        return(false);
+    }
+
+    if (self->value == NULL)
+    {
 		self->value = malloc(sizeof(float));
 		memset(self->value, 0, sizeof(float));
 	}
@@ -120,8 +124,12 @@ int kegItem_setFloat(KegItem_obj* self, void* value)
 
 int kegItem_setInt(KegItem_obj* self, void* value)
 {
-	if (self->value == NULL)
-	{
+    if (value == NULL) {
+        return(false);
+    }
+
+    if (self->value == NULL)
+    {
 		self->value = malloc(sizeof(int));
 		memset(self->value, 0, sizeof(int));
 	}
@@ -133,6 +141,10 @@ int kegItem_setInt(KegItem_obj* self, void* value)
 int kegItem_setStr(KegItem_obj* self, void* value)
 {
 	assert(value);
+    if (value == NULL || *(char**)value == NULL) {
+        return(false);
+    }
+
 	if (self->value != NULL && strlen(*(char**)value) > strlen(*(char**)value))
 	{
 		free(self->value);
@@ -151,7 +163,7 @@ int kegItem_setStr(KegItem_obj* self, void* value)
 
 int kegItem_setBool(KegItem_obj* self, void* value)
 {
-	if (self->value == NULL)
+	if (self->value == NULL && value != NULL)
 	{
 		self->value = malloc(sizeof(bool));
 		memset(self->value, 0, sizeof(bool));
@@ -170,7 +182,7 @@ int kegItem_setDateTimeFromString(KegItem_obj* self, void* value)
     struct tm time;
     //struct tm tm = *localtime(&t);
 
-    if (self->value == NULL)
+    if (self->value == NULL && value != NULL)
     {
         self->value = malloc(sizeof(struct tm));
         memset(self->value, 0, sizeof(struct tm));
@@ -319,8 +331,11 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self){
 	float pressure;
 	
     tapNo = getSiblingByKey(self, "TapNo");
+    if (tapNo == NULL || tapNo->value == NULL) {
+        return(false);
+    }
 
-	if (self->value == NULL || tapNo == NULL || tapNo->value == NULL ){
+	if (self->value == NULL ){
 		float f;
 		f = 0.0f;
 		self->value_set(self, &f);
@@ -360,9 +375,11 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
 	}
 
     tapNo = getSiblingByKey(self, "TapNo");
-    if (tapNo == NULL) {
+    if (tapNo == NULL
+     || tapNo->value == NULL) {
         return(0);
     }
+
     tapNo_value = *(int*)tapNo->value;
 	address += tapNo_value;
     msg_tx.id = KegMaster_SateliteMsgId_ADCRead;
@@ -374,6 +391,7 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
     weight = weight - 146400;     // Offset for zero
     weight = weight / 23.0f;      // convert to grams
     weight = weight / 1000.0f;    // convert to liters
+    weight = weight * 2.11338f;   // Convert to pints
 
 	if (result != 1) {
 		err = errno;
@@ -382,7 +400,7 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
 	}
     else {
 
-        /* Reduce message Tx spam (and Azure bill) - nly send update if change is notable */
+        /* Reduce message Tx spam (and Azure bill) - only send update if change is notable */
         if ((weight < INFINITY) && (abs((*(float*)self->value) - weight) > WEIGHT_UPDT_TOL)) {
             self->value_dirty = true;
         }
@@ -444,7 +462,8 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     pourEn = getSiblingByKey(self, "PourEn"); 
     clock_gettime(CLOCK_REALTIME, &realTime);
 
-    if (tapNo == NULL || avail == NULL || rsrv == NULL || szPour == NULL || szSmpl == NULL) {
+    if (tapNo == NULL || avail == NULL || rsrv == NULL || szPour == NULL || szSmpl == NULL 
+     || tapNo->value == NULL ) {
         return(0);
     }
     /* Update Satellite MCU address */
@@ -477,7 +496,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     /*=========================================================================
     Stop if below reserve value
     =========================================================================*/
-    if (*(float*)avail->value < *(float*)rsrv->value) {
+    if ( *(bool*)self->value && (*(float*)avail->value <= *(float*)rsrv->value)) {
         self->value_set(self, &disable);
         self->value_dirty = true;
     }
@@ -519,7 +538,8 @@ int KegItem_ProcPressureCrnt(KegItem_obj* self)
 
     tapNo = getSiblingByKey(self, "TapNo");
     pressDsrd = getSiblingByKey(self, "PressureDsrd");
-    if (tapNo == NULL || pressDsrd == NULL) {
+    if (tapNo == NULL || pressDsrd == NULL
+     || tapNo->value == NULL) {
             return(0);
     }
     pressure_crnt = *(float*)self->value;
