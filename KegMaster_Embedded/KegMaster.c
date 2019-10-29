@@ -373,7 +373,6 @@ char* KegMaster_getJson(KegMaster_obj* self){
 	free(id);
 	free(self->fields_json);
 	self->fields_json = NULL;
-	//char *json_serialize_to_string(const JSON_Value *value);
 
 	return(c);
 }

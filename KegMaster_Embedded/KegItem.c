@@ -269,14 +269,14 @@ char* kegItem_formatStr(KegItem_obj* self) {
 }
 
 char* kegItem_formatBool(KegItem_obj* self) {
-	const char* FMT = "";
+	const char* FMT = "%s";
 	char* c;
 	char* s;
 	size_t sz;
 
 	assert(self->value);
-	s = self->value ? "True" : "False";
-	sz = strlen(s);
+	s = *(bool*)self->value ? "True" : "False";
+	sz = strlen(s)+1; // +1 for null terminator
 	c = (char*)malloc(sz);
 	memset(c, 0, sz);
 	snprintf(c, sz, FMT, s);
@@ -496,7 +496,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     /*=========================================================================
     Stop if below reserve value
     =========================================================================*/
-    if ( *(bool*)self->value && (*(float*)avail->value <= *(float*)rsrv->value)) {
+    if ( (*(bool*)self->value) && (*(float*)avail->value <= *(float*)rsrv->value)) {
         self->value_set(self, &disable);
         self->value_dirty = true;
     }
