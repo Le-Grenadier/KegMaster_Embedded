@@ -631,14 +631,14 @@ static bool dateTimeCompare(struct tm* base, struct tm* challenge) {
     {
         return(0);
     }
-    /* Only compare date and time */
-    gt = 0;
-    gt |= challenge->tm_year > base->tm_year ? true : false;
-    gt |= challenge->tm_mon  > base->tm_mon  ? true : false;
-    gt |= challenge->tm_mday > base->tm_mday ? true : false;
-    gt |= challenge->tm_hour > base->tm_hour ? true : false;
-    gt |= challenge->tm_min  > base->tm_min  ? true : false;
-    gt |= challenge->tm_sec  > base->tm_sec  ? true : false;
+
+    gt = challenge->tm_year > base->tm_year ? true :
+        challenge->tm_year < base->tm_year ? false :
+        \
+        challenge->tm_mon  > base->tm_mon ? true :
+        challenge->tm_mon  < base->tm_mon ? false :
+        \
+        challenge->tm_mday > base->tm_mday ? true : false;
 
     return(gt);
 }
