@@ -144,13 +144,13 @@ KegMaster_obj* KegMaster_getKegPtr(KegMaster_obj*** keg_root, int idx) {
 
         km_cnt++;
         *keg_root = realloc(*keg_root, sizeof(KegMaster_obj*) * km_cnt);
-        *keg_root[idx] = keg;
+        (*keg_root)[idx] = keg;
     }
     return((*keg_root)[idx]);
 }
 
 KegMaster_obj* KegMaster_updateKeg(JSON_Value* jsonRoot, KegMaster_obj*** keg_root, int keg_cnt){
-    KegMaster_obj* keg;
+    KegMaster_obj* keg = NULL;
 	KegItem_obj* ki;
 	char* jsonKey;
 	JSON_Array* jsonArray = NULL;
@@ -164,8 +164,9 @@ KegMaster_obj* KegMaster_updateKeg(JSON_Value* jsonRoot, KegMaster_obj*** keg_ro
 
     /* Get pointer to keg object */
     jsonElem = json_object_get_value(jsonObj, "TapNo");
-    keg = KegMaster_getKegPtr(keg_root, (int)json_value_get_number(jsonElem));
 
+    keg = KegMaster_getKegPtr(keg_root, (int)json_value_get_number(jsonElem));
+    sem_wait(&keg->kegItem_semaphore);
     /* Populate / Update Keg */
 	for (i = 0; i < cntOfArray(KegMaster_FieldDef); i++)
 	{
@@ -216,6 +217,7 @@ KegMaster_obj* KegMaster_updateKeg(JSON_Value* jsonRoot, KegMaster_obj*** keg_ro
 				break;
 		}
 	}
+    sem_post(&keg->kegItem_semaphore);
 
     return(keg);
 }
@@ -240,7 +242,7 @@ int KegMaster_execute(KegMaster_obj* self)
         doQuery = (e->query_timeNext.tv_sec < ts.tv_sec) && (e->queryPeriod != 0);
         doProc = (e->refresh_timeNext.tv_sec < ts.tv_sec) && (e->refreshPeriod != 0);
         TapNo = self->field_GetByKey(self, "TapNo");
-        sem_trywait(&self->kegItem_semaphore);
+        sem_wait(&self->kegItem_semaphore);
         if (errno == EAGAIN) {
             Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_execute()");
             return (0);
@@ -255,8 +257,8 @@ int KegMaster_execute(KegMaster_obj* self)
         if (doProc && e->value_refresh != NULL) {
             clock_gettime(CLOCK_REALTIME, &e->refresh_timeNext);
             e->refresh_timeNext.tv_sec += e->refreshPeriod;
-
             e->value_refresh(e);
+
         }
 
 		if(doProc && e->value_proc != NULL){
@@ -303,7 +305,6 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
 	KegItem_obj* newItem;
 	KegMaster_FieldDefType* fieldDef;
 
-    sem_trywait(&self->kegItem_semaphore);
     if (errno == EAGAIN) {
         Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_fieldAdd()");
         return(0);
@@ -319,7 +320,6 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
     newItem = KegItem_init(newItem, fieldDef->update, fieldDef->update_rate, fieldDef->proc, fieldDef->queryRate );
 
     self->fields = (self->fields == NULL) ? newItem : KegItem_ListInsertBefore(self->fields, newItem);
-    sem_post(&self->kegItem_semaphore);
 
 	return(newItem);
 }
@@ -335,7 +335,6 @@ KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
         return(item);
     }
 
-    sem_trywait(&self->kegItem_semaphore);
     if (errno == EAGAIN) {
         Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_getFieldByKey()");
         return(0);
@@ -349,8 +348,6 @@ KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
 		}
 		this = this->next;
 	}while(this != self->fields);
-
-    sem_post(&self->kegItem_semaphore);
 
 	return(item);
 }

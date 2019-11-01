@@ -393,6 +393,10 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
     weight = weight / 1000.0f;    // convert to liters
     weight = weight * 2.11338f;   // Convert to pints
 
+    /* Reasonableness checks */
+    weight = fmaxf(weight, 0.0f);
+    weight = fminf(weight, 9999.0f);
+
 	if (result != 1) {
 		err = errno;
 		Log_Debug("ERROR: Failed to get Keg %d weight: errno=%d (%s)\n", tapNo_value, strerror(err));
@@ -488,8 +492,8 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
        - pouring disabled, sampling enabled, and sample has been served 
     -------------------------------------------------------------------------*/
     if( (realTime.tv_sec >= lockoutTimer.tv_sec )
-     && ( (*(bool*)pourEn->value) && pourQty >= (*(float*)szPour->value) )
-       || (!(*(bool*)pourEn->value) && (*(float*)szSmpl->value) > 0.1f && pourQty >= (*(float*)szSmpl->value) ) ){
+     && ( (*(bool*)pourEn->value) && (*(float*)szPour->value) > 0.1 && pourQty >= (*(float*)szPour->value) )
+       || (!(*(bool*)pourEn->value) && (*(float*)szSmpl->value) > 0.1 && pourQty >= (*(float*)szSmpl->value) ) ){
         lockoutTimer.tv_sec = realTime.tv_sec + POUR_DELAY;
     }
 
@@ -498,7 +502,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     =========================================================================*/
     if ( (*(bool*)self->value) && (*(float*)avail->value <= *(float*)rsrv->value)) {
         self->value_set(self, &disable);
-        self->value_dirty = true;
+        //self->value_dirty = true;
     }
 
     /*=========================================================================
@@ -506,7 +510,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     =========================================================================*/
     /* Enable Pouring based on state, if not locked-out */
     pourMsg.id = KegMaster_SateliteMsgId_GpioSetDflt;
-    pourMsg.data.gpio.id = 2;
+    pourMsg.data.gpio.id = 3;
     pourMsg.data.gpio.state = (*(bool*)pourEn->value) && (realTime.tv_sec >= lockoutTimer.tv_sec);
     pourMsg.data.gpio.holdTime = POUR_DELAY;
     pourMsg.msg_trm = 0x04FF;
@@ -549,17 +553,18 @@ int KegItem_ProcPressureCrnt(KegItem_obj* self)
     /* For now, just proportional control
         - Minimum dwell time = 20 ms (mostly chosen at random, based on other, similar valves.)
         - Max dwell time 1 second (Again chosen mostly at random, based on how scary I'd find it going off while disconnected.) */
-    dwell_time = (pressure_dsrd - pressure_crnt) / pressure_dsrd;
+    dwell_time = (pressure_dsrd - pressure_crnt) / pressure_dsrd * 1000;
     dwell_time = fmaxf(dwell_time, DWELL_MIN);
 
     /* Send message */
     address += *(I2C_DeviceAddress*)tapNo->value;
     msg.id = KegMaster_SateliteMsgId_GpioSet;
-    msg.data.gpio.id = 1;
+    msg.data.gpio.id = 2;
     msg.data.gpio.state = 1;
     msg.data.gpio.holdTime = (uint16_t) dwell_time;
+    msg.msg_trm = 0x04FF;
     result = -1;
-    //result = I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg));
+    result = I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg));
 
     if (result != 0) {
         err = errno;
@@ -579,7 +584,7 @@ int KegItem_ProcPressureCrnt(KegItem_obj* self)
 
 int KegItem_ProcDateAvail(KegItem_obj* self) {
     bool b;
-    KegItem_obj* keg_item;
+    KegItem_obj* pourEn;
     time_t t = time(NULL);
     struct tm time = *localtime(&t);
     if(self->value == NULL) {
@@ -587,10 +592,10 @@ int KegItem_ProcDateAvail(KegItem_obj* self) {
     }
 
     //KegMaster_SatelliteMsgType msg;
-    keg_item = getSiblingByKey(self, "PourEn");
+    pourEn = getSiblingByKey(self, "PourEn");
 
-    if( (b = dateTimeCompare(self->value, &time)) && keg_item != NULL ){
-        keg_item->value_set(keg_item, &b);
+    if( (b = dateTimeCompare(self->value, &time)) && pourEn != NULL && !*(bool*)pourEn->value){
+        pourEn->value_set(pourEn, &b);
     }
 
     return(0);

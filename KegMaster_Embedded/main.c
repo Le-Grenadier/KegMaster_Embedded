@@ -71,30 +71,15 @@ int main(void)
         int value;
 
          // TODO: These should be threads
-        if (km_cnt >= 1) {
-            km[0]->run(km[0]);
-         }
-         else {
-             /* Slow down the processing to try and help avoid racking up a huge bill if I make a mistake */
-             const struct timespec sleepTime = { 30, 0 };
-             nanosleep(&sleepTime, NULL);
-
-             // TODO - re-request all data periodically
-            // KegMaster_RequestKegData(0, NULL);
-         }
-         // TODO: These should be threads
-         if (km_cnt > 1) {
-             km[1]->run(km[1]);
-         }
-         // TODO: These should be threads
-         if (km_cnt > 2) {
-             km[2]->run(km[2]);
-         }
-         // TODO: These should be threads
-         if (km_cnt > 3) {
-             km[3]->run(km[3]);
-         }
-
+        for (int i = 0; i < km_cnt; i++) {
+            if (km[i] != NULL && km[i]->run != NULL) {
+                km[0]->run(km[0]);
+            }
+            else {
+                /* For now, Tap numbers may not be skipped -- but the data may be recieved out of order */
+                KegMaster_RequestKegData(i, NULL);
+            }
+        }
 		 value += 1;
 		 value %= 8;
 
