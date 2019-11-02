@@ -90,6 +90,7 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
     weight = weight / 23.0f;      // convert to grams
     weight = weight / 1000.0f;    // convert to liters
     weight = weight * 2.11338f;   // Convert to pints
+    weight = weight - 7.0f;          // Keg weighs about 7 pints -- TODO: Impliment better tare functionality.
 
     /* Reasonableness checks */
     if ((result != true)
