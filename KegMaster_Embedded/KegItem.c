@@ -428,7 +428,7 @@ KegItem Db access interface
 /*-----------------------------------------------------------------------------
 KegItem data processing callback functions
  - This is where either data will be 'cleaned' or otherwise acted upon.
- - TODO: Reduct function complexity
+ - TODO: Reduce function complexity
 -----------------------------------------------------------------------------*/
 int KegItem_ProcPourEn(KegItem_obj* self) {
     #define POUR_DELAY 5 /* Seconds */ 
@@ -448,6 +448,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     bool pourTimeout;
     bool pourLevelOk;
     uint16_t pourQty; 
+    uint32_t hold_time;
     struct timespec realTime;
 
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
@@ -509,11 +510,14 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     /*=========================================================================
     Set ouput state
     =========================================================================*/
-    /* Enable Pouring based on state, if not locked-out */
-    pourMsg.id = KegMaster_SateliteMsgId_GpioSetDflt;
+    /* Enable Pouring based on state, if not locked-out                                 */
+    /*  - Enable for 2x refresh period so an error won't leave it unlocked indefinitely */
+    hold_time = self->refreshPeriod * 2 * 1000;
+
+    pourMsg.id = KegMaster_SateliteMsgId_GpioSet;
     pourMsg.data.gpio.id = 3;
     pourMsg.data.gpio.state = (*(bool*)pourEn->value) && (realTime.tv_sec >= lockoutTimer.tv_sec);
-    pourMsg.data.gpio.holdTime = POUR_DELAY;
+    pourMsg.data.gpio.holdTime = hold_time > UINT16_MAX ? UINT16_MAX : hold_time;
     pourMsg.msg_trm = 0x04FF;
     result = -1;
     result = I2CMaster_Write(i2cFd, address, (uint8_t*)&pourMsg, sizeof(pourMsg));
