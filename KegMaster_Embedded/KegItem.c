@@ -394,10 +394,11 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
     weight = weight * 2.11338f;   // Convert to pints
 
     /* Reasonableness checks */
-    weight = fmaxf(weight, 0.0f);
-    weight = fminf(weight, 9999.0f);
+    if( ( result != true ) 
+     || ( weight != fmaxf(weight, 0.0f))    /* Going into beverage-debt with kegs not supported     */
+     || ( weight != fminf(weight, 800.0f))){ /* Kegs greater than 100 gallons not supported          */
 
-	if (result != 1) {
+	
 		err = errno;
 		Log_Debug("ERROR: Failed to get Keg %d weight: errno=%d (%s)\n", tapNo_value, strerror(err));
         weight = INFINITY;
@@ -463,7 +464,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     szPour = getSiblingByKey(self, "PourQtyGlass");
     szSmpl = getSiblingByKey(self, "PourQtySample");
     tapNo = getSiblingByKey(self, "TapNo");
-    pourEn = getSiblingByKey(self, "PourEn"); 
+    pourEn = self;// getSiblingByKey(self, "PourEn");
     clock_gettime(CLOCK_REALTIME, &realTime);
 
     if (tapNo == NULL || avail == NULL || rsrv == NULL || szPour == NULL || szSmpl == NULL 
@@ -500,7 +501,9 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     /*=========================================================================
     Stop if below reserve value
     =========================================================================*/
-    if ( (*(bool*)self->value) && (*(float*)avail->value <= *(float*)rsrv->value)) {
+    if ( (*(bool*)self->value)
+      && (*(float*)avail->value <= *(float*)rsrv->value)
+      && (*(float*)avail->value + pourQty > * (float*)rsrv->value) ){
         self->value_set(self, &disable);
         //self->value_dirty = true;
     }

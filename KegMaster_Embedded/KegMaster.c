@@ -150,6 +150,8 @@ KegMaster_obj* KegMaster_getKegPtr(KegMaster_obj*** keg_root, int idx) {
 }
 
 KegMaster_obj* KegMaster_updateKeg(JSON_Value* jsonRoot, KegMaster_obj*** keg_root, int keg_cnt){
+    bool result;
+    int* err;
     KegMaster_obj* keg = NULL;
 	KegItem_obj* ki;
 	char* jsonKey;
@@ -166,7 +168,13 @@ KegMaster_obj* KegMaster_updateKeg(JSON_Value* jsonRoot, KegMaster_obj*** keg_ro
     jsonElem = json_object_get_value(jsonObj, "TapNo");
 
     keg = KegMaster_getKegPtr(keg_root, (int)json_value_get_number(jsonElem));
-    sem_wait(&keg->kegItem_semaphore);
+    result = sem_wait(&keg->kegItem_semaphore);
+    if (result != 0) {
+        err = errno;
+        Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_execute(): errno=%d (%s)\n", err, strerror(err));
+        return (0);
+    }
+
     /* Populate / Update Keg */
 	for (i = 0; i < cntOfArray(KegMaster_FieldDef); i++)
 	{
@@ -224,6 +232,8 @@ KegMaster_obj* KegMaster_updateKeg(JSON_Value* jsonRoot, KegMaster_obj*** keg_ro
 
 int KegMaster_execute(KegMaster_obj* self)
 {
+    bool result;
+    int* err;
     KegItem_obj* e;
     KegItem_obj* TapNo;
     char* c;
@@ -242,9 +252,11 @@ int KegMaster_execute(KegMaster_obj* self)
         doQuery = (e->query_timeNext.tv_sec < ts.tv_sec) && (e->queryPeriod != 0);
         doProc = (e->refresh_timeNext.tv_sec < ts.tv_sec) && (e->refreshPeriod != 0);
         TapNo = self->field_GetByKey(self, "TapNo");
-        sem_wait(&self->kegItem_semaphore);
-        if (errno == EAGAIN) {
-            Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_execute()");
+
+        result = sem_wait(&self->kegItem_semaphore);
+        if (result != 0) {
+            err = errno;
+            Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_execute(): errno=%d (%s)\n", err, strerror(err));
             return (0);
         }
 
@@ -305,11 +317,6 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
 	KegItem_obj* newItem;
 	KegMaster_FieldDefType* fieldDef;
 
-    if (errno == EAGAIN) {
-        Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_fieldAdd()");
-        return(0);
-    }
-
 	for (int i = 0; i < sizeof(KegMaster_FieldDef) / sizeof(KegMaster_FieldDef[0]); i++) {
         fieldDef = &KegMaster_FieldDef[i];
 		if (0 == strcmp(fieldDef->name, field)) {
@@ -333,11 +340,6 @@ KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
 
     if (self->fields == NULL) {
         return(item);
-    }
-
-    if (errno == EAGAIN) {
-        Log_Debug("ERROR: Failed to acquire semaphore. KegMaster_getFieldByKey()");
-        return(0);
     }
 
 	this = self->fields;
