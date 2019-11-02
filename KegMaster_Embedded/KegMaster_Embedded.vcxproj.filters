@@ -28,6 +28,9 @@
     <Filter Include="Lib\json">
       <UniqueIdentifier>{979c7d69-454d-4b0e-b1f9-2c32fe176814}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Lib\DateTime">
+      <UniqueIdentifier>{c9611793-876c-4d0b-aa34-fddd8ef2283c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -42,9 +45,6 @@
     </ClCompile>
     <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\azure_iot_utilities.c">
       <Filter>Lib\IotUtilities</Filter>
-    </ClCompile>
-    <ClCompile Include="SatelitePicIntf.c">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="jsonUtil.c">
       <Filter>Lib\json</Filter>
@@ -61,6 +61,18 @@
     <ClCompile Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\parson.c">
       <Filter>Lib\json</Filter>
     </ClCompile>
+    <ClCompile Include="KegItem_Proc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KegItem_Utl.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KegItem_Updt.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SateliteIntf.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\lib\azure_samples\Samples\AzureIoT\AzureIoT\epoll_timerfd_utilities.h">
@@ -71,9 +83,6 @@
     </ClInclude>
     <ClInclude Include="..\lib\avnet_samples\AvnetStarterKitReferenceDesign\azure_iot_utilities.h">
       <Filter>Lib\IotUtilities</Filter>
-    </ClInclude>
-    <ClInclude Include="SatelitePicIntf.h">
-      <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="jsonUtil.h">
       <Filter>Lib\json</Filter>
@@ -98,6 +107,21 @@
     </ClInclude>
     <ClInclude Include="KegMaster_Satellite.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="KegItem_Utl.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="KegItem_Proc.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="KegItem_Updt.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SateliteIntf.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DateTime.h">
+      <Filter>Lib\DateTime</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

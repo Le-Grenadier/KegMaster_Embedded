@@ -1,5 +1,6 @@
 #pragma once
 #include <stdbool.h>
+#include <time.h>
 
 extern const char* KegItem_Fields[];
 
@@ -83,51 +84,6 @@ KegItem_obj* KegItem_init(
 	KegItem_funcInt* value_proc,
     float queryRate
 );
-
-
-/*=============================================================================
-KegItem Object Value Setter functions
-=============================================================================*/
-KegItem_funcSet kegItem_setFloat;
-KegItem_funcSet kegItem_setInt;
-KegItem_funcSet kegItem_setStr;
-KegItem_funcSet kegItem_setBool;
-KegItem_funcSet kegItem_setDateTimeFromString;
-
-/*=============================================================================
-KegItem Object Value Formatting functions
- - char* must be free'd after use
-=============================================================================*/
-KegItem_funcChr kegItem_formatFloat;
-KegItem_funcChr kegItem_formatInt;
-KegItem_funcChr kegItem_formatStr;
-KegItem_funcChr kegItem_formatBool;
-KegItem_funcChr kegItem_formatDateTime;
-
-
-/*=============================================================================
-KegItem Object Key:Value to JSON
- - char* must be free'd after use
-=============================================================================*/
-char* KegItem_toJson(KegItem_obj* self);
-
-/*=============================================================================
-KegItem Hw and DB accessors
-=============================================================================*/
-int KegItem_HwGetPressureCrnt(KegItem_obj* self);
-int KegItem_HwGetQtyAvail(KegItem_obj* self);
-
-/*=============================================================================
-KegItem Db access interface
-=============================================================================*/
-//static int KegItem_DbGetPressureCrnt(KegItem_obj* self);
-
-/*=============================================================================
-KegItem data processing callback 'cleaner' functions
-=============================================================================*/
-int KegItem_ProcPourEn(KegItem_obj* self);
-int KegItem_ProcPressureDsrd(KegItem_obj* self);
-int KegItem_ProcDateAvail(KegItem_obj* self);
 
 /*=============================================================================
 Utilities

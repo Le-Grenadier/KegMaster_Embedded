@@ -22,6 +22,9 @@
 #include "ConnectionStringPrv.h"
 #include "KegMaster.h"
 #include "KegItem.h"
+#include "KegItem_Proc.h"
+#include "KegItem_Updt.h"
+#include "KegItem_Utl.h"
 
 #define MIN 60.0f
 #define SEC 1.0f
@@ -127,7 +130,6 @@ void KegMaster_procAzureIotMsg(const char* sqlRow) {
 
 KegMaster_obj* KegMaster_getKegPtr(KegMaster_obj*** keg_root, int idx) {
     KegMaster_obj* keg;
-    KegMaster_obj* temp;
 
     if (keg_root == NULL || idx >= km_cnt) {
         /* Build Keg in memory and initialize fields */
@@ -143,7 +145,7 @@ KegMaster_obj* KegMaster_getKegPtr(KegMaster_obj*** keg_root, int idx) {
         sem_init(&keg->kegItem_semaphore, 0, 1);
 
         km_cnt++;
-        *keg_root = realloc(*keg_root, sizeof(KegMaster_obj*) * km_cnt);
+        *keg_root = realloc(*keg_root, sizeof(KegMaster_obj*) * (uint32_t)km_cnt);
         (*keg_root)[idx] = keg;
     }
     return((*keg_root)[idx]);
@@ -151,7 +153,7 @@ KegMaster_obj* KegMaster_getKegPtr(KegMaster_obj*** keg_root, int idx) {
 
 KegMaster_obj* KegMaster_updateKeg(JSON_Value* jsonRoot, KegMaster_obj*** keg_root, int keg_cnt){
     bool result;
-    int* err;
+    int err;
     KegMaster_obj* keg = NULL;
 	KegItem_obj* ki;
 	char* jsonKey;
@@ -233,7 +235,7 @@ KegMaster_obj* KegMaster_updateKeg(JSON_Value* jsonRoot, KegMaster_obj*** keg_ro
 int KegMaster_execute(KegMaster_obj* self)
 {
     bool result;
-    int* err;
+    int err;
     KegItem_obj* e;
     KegItem_obj* TapNo;
     char* c;
@@ -332,24 +334,8 @@ KegItem_obj* KegMaster_fieldAdd(KegMaster_obj* self, char* field)
 
 KegItem_obj* KegMaster_getFieldByKey(KegMaster_obj* self, char* key)
 {
-	KegItem_obj* this = NULL;
-	KegItem_obj* item = NULL;
 	assert(key != NULL);
-
-    if (self->fields == NULL) {
-        return(item);
-    }
-
-	this = self->fields;
-	do{
-		if (0 == memcmp(key, this->key, strlen(key))) {
-			item = this;
-			break;
-		}
-		this = this->next;
-	}while(this != self->fields);
-
-	return(item);
+    return(KegItem_getSiblingByKey(self->fields, key));
 }
 
 /* Calling this function destroys cached data cache after passing it back */

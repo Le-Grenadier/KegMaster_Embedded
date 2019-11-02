@@ -6,12 +6,12 @@
 #include "mt3620_avnet_dev.h"
 #include <applibs/log.h>
 
-#include "SatelitePicIntf.h"
+#include "SateliteIntf.h"
 
 int i2cFd = -1;
 
 
-int I2C__KegmasterInit(void) {
+int Satellite_Init(void) {
 
 	// Begin MT3620 I2C init 
 

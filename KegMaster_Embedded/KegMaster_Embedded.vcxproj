@@ -46,9 +46,12 @@
     <ClCompile Include="..\lib\azure_samples\Samples\AzureIoT\AzureIoT\epoll_timerfd_utilities.c" />
     <ClCompile Include="AzureIntf.c" />
     <ClCompile Include="KegItem.c" />
+    <ClCompile Include="KegItem_Proc.c" />
+    <ClCompile Include="KegItem_Updt.c" />
+    <ClCompile Include="KegItem_Utl.c" />
     <ClCompile Include="KegMaster.c" />
     <ClCompile Include="main.c" />
-    <ClCompile Include="SatelitePicIntf.c" />
+    <ClCompile Include="SateliteIntf.c" />
     <ClCompile Include="jsonUtil.c" />
     <UpToDateCheckInput Include="app_manifest.json" />
   </ItemGroup>
@@ -60,11 +63,15 @@
     <ClInclude Include="AzureIntf.h" />
     <ClInclude Include="ConnectionString.h" />
     <ClInclude Include="ConnectionStringPrv.h" />
+    <ClInclude Include="DateTime.h" />
     <ClInclude Include="jsonUtil.h" />
     <ClInclude Include="KegItem.h" />
+    <ClInclude Include="KegItem_Proc.h" />
+    <ClInclude Include="KegItem_Updt.h" />
+    <ClInclude Include="KegItem_Utl.h" />
     <ClInclude Include="KegMaster.h" />
     <ClInclude Include="KegMaster_Satellite.h" />
-    <ClInclude Include="SatelitePicIntf.h" />
+    <ClInclude Include="SateliteIntf.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
