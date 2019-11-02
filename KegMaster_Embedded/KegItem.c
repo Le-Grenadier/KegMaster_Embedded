@@ -553,16 +553,18 @@ int KegItem_ProcPressureDsrd(KegItem_obj* self)
     // [insert fancy control algorithm here] 
     /* For now, just proportional control
         - Minimum dwell time = 20 ms (mostly chosen at random, based on other, similar valves.)
-        - Max dwell time 1 second (Again chosen mostly at random, based on how scary I'd find it going off while disconnected.) */
-    dwell_time = (pressure_dsrd - pressure_crnt) / pressure_dsrd * 1000;
-    dwell_time = fmaxf(dwell_time, DWELL_MIN);
+        - Calculate dwell time as percentage of interval */
+    dwell_time = (pressure_dsrd - pressure_crnt) / pressure_dsrd;
+    dwell_time = dwell_time * 0.5f; /* Max dwell of 1/2 inverval */
+    dwell_time = dwell_time * self->refreshPeriod;
+    dwell_time = dwell_time > 0.0f ? fmaxf(dwell_time, DWELL_MIN) : 0;
 
     /* Send message */
     address += *(I2C_DeviceAddress*)tapNo->value;
     msg.id = KegMaster_SateliteMsgId_GpioSet;
     msg.data.gpio.id = 2;
     msg.data.gpio.state = 1;
-    msg.data.gpio.holdTime = (uint16_t) dwell_time;
+    msg.data.gpio.holdTime = (uint16_t)(dwell_time * 1000);
     msg.msg_trm = 0x04FF;
     result = -1;
     result = I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg));
