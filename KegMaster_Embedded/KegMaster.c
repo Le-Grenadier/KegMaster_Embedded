@@ -51,8 +51,8 @@ int            km_cnt = 0;
 	{ "PourNotification",	KegItem_TypeBOOL,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPourNotify */
 	{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourQtyGlass */
 	{ "PourQtySample",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourQtySample */
-	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	KegItem_ProcPressureCrnt,	15*SEC,		           NO_UPDT      }, /* KegMaster_FieldIdPressureCrnt */
-	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						NULL,						15*SEC,		       120*MIN          }, /* KegMaster_FieldIdPressureDsrd */
+	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	NULL,                       15*SEC,		           NO_UPDT      }, /* KegMaster_FieldIdPressureCrnt */
+	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						KegItem_ProcPressureDsrd,    5*SEC,		       120*MIN          }, /* KegMaster_FieldIdPressureDsrd */
     { "PressureDwellTime",	KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPressureDwellTime */
 	{ "PressureEn",			KegItem_TypeBOOL,		NULL,						NULL,						15*MIN,	           120*MIN          }, /* KegMaster_FieldIdPressureEn */
 	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                       30*SEC,		           NO_UPDT      }, /* KegMaster_FieldIdQtyAvailable */
@@ -261,19 +261,17 @@ int KegMaster_execute(KegMaster_obj* self)
         }
 
         if (doQuery && TapNo != NULL) {
-            clock_gettime(CLOCK_REALTIME, &e->query_timeNext);
-            e->query_timeNext.tv_sec += e->queryPeriod;
+            e->query_timeNext.tv_sec = ts.tv_sec + e->queryPeriod;
             self->queryDb((*(int*)TapNo->value), e->key);
         }
 
         if (doProc && e->value_refresh != NULL) {
-            clock_gettime(CLOCK_REALTIME, &e->refresh_timeNext);
-            e->refresh_timeNext.tv_sec += e->refreshPeriod;
+            e->refresh_timeNext.tv_sec = ts.tv_sec + e->refreshPeriod;
             e->value_refresh(e);
-
         }
 
 		if(doProc && e->value_proc != NULL){
+            e->refresh_timeNext.tv_sec = ts.tv_sec + e->refreshPeriod;
 			e->value_proc(e);
 		}
 

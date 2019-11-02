@@ -397,8 +397,6 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
     if( ( result != true ) 
      || ( weight != fmaxf(weight, 0.0f))    /* Going into beverage-debt with kegs not supported     */
      || ( weight != fminf(weight, 800.0f))){ /* Kegs greater than 100 gallons not supported          */
-
-	
 		err = errno;
 		Log_Debug("ERROR: Failed to get Keg %d weight: errno=%d (%s)\n", tapNo_value, strerror(err));
         weight = INFINITY;
@@ -524,11 +522,11 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
 }
 
 
-int KegItem_ProcPressureCrnt(KegItem_obj* self)
+int KegItem_ProcPressureDsrd(KegItem_obj* self)
 {
     #define DWELL_MIN 0.02f
 
-    KegItem_obj* pressDsrd;
+    KegItem_obj* pressCrnt;
     KegItem_obj* tapNo;
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
     float pressure_crnt;
@@ -544,13 +542,13 @@ int KegItem_ProcPressureCrnt(KegItem_obj* self)
     }
 
     tapNo = getSiblingByKey(self, "TapNo");
-    pressDsrd = getSiblingByKey(self, "PressureDsrd");
-    if (tapNo == NULL || pressDsrd == NULL
+    pressCrnt = getSiblingByKey(self, "PressureCrnt");
+    if (tapNo == NULL || pressCrnt == NULL
      || tapNo->value == NULL) {
             return(0);
     }
-    pressure_crnt = *(float*)self->value;
-    pressure_dsrd = *(float*)pressDsrd->value;
+    pressure_crnt = *(float*)pressCrnt->value;
+    pressure_dsrd = *(float*)self->value; 
     
     // [insert fancy control algorithm here] 
     /* For now, just proportional control

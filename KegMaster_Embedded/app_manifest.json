@@ -13,6 +13,6 @@
     "SpiMaster": [],
     "WifiConfig": true,
     "NetworkConfig": false,
-    "SystemTime": false
+    "SystemTime": true
   }
 }
