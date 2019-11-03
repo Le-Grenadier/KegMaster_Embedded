@@ -70,7 +70,7 @@
     <ClCompile Include="KegItem_Updt.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SateliteIntf.c">
+    <ClCompile Include="SatelliteIntf.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -117,11 +117,11 @@
     <ClInclude Include="KegItem_Updt.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="SateliteIntf.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="DateTime.h">
       <Filter>Lib\DateTime</Filter>
+    </ClInclude>
+    <ClInclude Include="SatelliteIntf.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

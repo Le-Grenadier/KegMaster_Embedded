@@ -12,7 +12,7 @@
 #include "epoll_timerfd_utilities.h"
 #include "KegItem.h"
 #include "KegMaster.h"
-#include "SateliteIntf.h"
+#include "SatelliteIntf.h"
 
 
 // Temp

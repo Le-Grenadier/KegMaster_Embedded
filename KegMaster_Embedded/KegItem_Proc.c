@@ -11,9 +11,8 @@
 #include "KegItem.h"
 #include "KegItem_Proc.h"
 #include "KegItem_Utl.h"
-#include "SateliteIntf.h"
+#include "SatelliteIntf.h"
 
-extern int i2cFd;
 
 /*-----------------------------------------------------------------------------
 Process PourEn data field
@@ -74,17 +73,8 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     /*-----------------------------------------------------
     Qty Poured Already
     -----------------------------------------------------*/
-
-    /* Get Current qty poured */
-    qtyMsg.id = Satellite_MsgId_InterruptRead;
-    qtyMsg.data.intrpt.id = 0;
-    qtyMsg.msg_trm = 0x04FF;
-    result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&qtyMsg, sizeof(qtyMsg), (uint8_t*)&qtyMsg, sizeof(qtyMsg));
-    if (result == 0) {
-        err = errno;
-        Log_Debug("ERROR: Failure to get QtyPoured: errno=%d (%s)\n", err, strerror(err));
-    }
-    pourQty = qtyMsg.data.intrpt.count / POUR_INT_CNVT;
+    Satellite_InterruptRead(address, Satellite_IntrpId_QtyPoured, &pourQty);
+    pourQty = pourQty / POUR_INT_CNVT;
 
     /*-----------------------------------------------------
     Disable pour temporarily if
@@ -118,16 +108,8 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
 
     tempLockout = realTime.tv_sec <= lockoutTimer.tv_sec;
 
-    pourMsg.id = Satellite_MsgId_GpioSet;
-    pourMsg.data.gpio.id = 3;
-    pourMsg.data.gpio.state = (enablePour || enableSample) && !tempLockout;
-    pourMsg.data.gpio.holdTime = (uint16_t)holdTime; /* Boundary checked above */
-    pourMsg.msg_trm = 0x04FF;
-    result = I2CMaster_Write(i2cFd, address, (uint8_t*)&pourMsg, sizeof(pourMsg));
-    if (result == 0) {
-        err = errno;
-        Log_Debug("ERROR: Failure to set PourEnable state: errno=%d (%s)\n", err, strerror(err));
-    }
+    enablePour = (enablePour || enableSample) && !tempLockout;
+    Satellite_GpioSet(address, Satellite_OutputId_TapEn, &enablePour, (uint16_t)holdTime);
 
     return(ret = 1);
 }
@@ -138,7 +120,7 @@ Process PressureDsrd field
 -----------------------------------------------------------------------------*/
 int KegItem_ProcPressureDsrd(KegItem_obj* self)
 {
-#define DWELL_MIN 0.02f
+    #define DWELL_MIN 0.02f
 
     KegItem_obj* pressCrnt_obj;
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
@@ -146,8 +128,10 @@ int KegItem_ProcPressureDsrd(KegItem_obj* self)
     float pressureDsrd;
     float dwellTime;
     int err;
-    KegItem_obj* keg_item;
+    KegItem_obj* kegItem;
     Satellite_MsgType msg;
+    bool gasEn;
+    uint16_t holdTime;
     bool result;
 
     if (self->value == NULL) {
@@ -172,23 +156,14 @@ int KegItem_ProcPressureDsrd(KegItem_obj* self)
 
     /* Send message */
     address += (I2C_DeviceAddress)KegItem_getTapNo(self);
-    msg.id = Satellite_MsgId_GpioSet;
-    msg.data.gpio.id = 2;
-    msg.data.gpio.state = 1;
-    msg.data.gpio.holdTime = (uint16_t)(dwellTime * 1000);
-    msg.msg_trm = 0x04FF;
-    result = I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg));
-
-    if (result == 0) {
-        err = errno;
-        Log_Debug("ERROR: Failure to set command Keg Pressurize output: errno=%d (%s)\n", err, strerror(err));
-    }
+    holdTime = (uint16_t)(dwellTime * 1000);
+    Satellite_GpioSet(address, Satellite_OutputId_GasEn, &gasEn, holdTime);
 
     /* Update statistics */
-    keg_item = KegItem_getSiblingByKey(self, "PressureDwellTime");
-    if((result!=0) && (keg_item->value != NULL)) {
-        dwellTime += *(float*)keg_item->value;
-        keg_item->value_set(keg_item, &dwellTime);
+    kegItem = KegItem_getSiblingByKey(self, "PressureDwellTime");
+    if((result!=0) && (kegItem->value != NULL)) {
+        dwellTime += *(float*)kegItem->value;
+        kegItem->value_set(kegItem, &dwellTime);
         //TODO: Push to Db (Mark value dirty) -- save on message count for now.
     }
 

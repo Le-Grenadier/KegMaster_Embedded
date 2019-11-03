@@ -51,7 +51,7 @@
     <ClCompile Include="KegItem_Utl.c" />
     <ClCompile Include="KegMaster.c" />
     <ClCompile Include="main.c" />
-    <ClCompile Include="SateliteIntf.c" />
+    <ClCompile Include="SatelliteIntf.c" />
     <ClCompile Include="jsonUtil.c" />
     <UpToDateCheckInput Include="app_manifest.json" />
   </ItemGroup>
@@ -71,7 +71,7 @@
     <ClInclude Include="KegItem_Utl.h" />
     <ClInclude Include="KegMaster.h" />
     <ClInclude Include="KegMaster_Satellite.h" />
-    <ClInclude Include="SateliteIntf.h" />
+    <ClInclude Include="SatelliteIntf.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
