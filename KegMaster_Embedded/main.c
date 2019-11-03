@@ -40,14 +40,29 @@ int main(void)
         return -1;
     }
 
+    /*-----------------------------------------------------
+    Init Azure Services 
+    -----------------------------------------------------*/
+    /* Azure IoT Client */
 	AzureIoT_SetupClient();
     pthread_create(&pt_AzureIot, NULL, pt_AzureIotPeriodic, NULL);
     
+    /* NTP Time Sync */
+    Networking_TimeSync_SetEnabled(true);
+    tzset();
+
+    /*-----------------------------------------------------
+    Init Keg Master and request first data 
+        - TODO: Find more robust way to request keg data
+    -----------------------------------------------------*/
 	KegMaster_initRemote();
 	KegMaster_initLocal();
 	KegMaster_initProcs();
 	KegMaster_RequestKegData(0, NULL);
 	
+    /*-----------------------------------------------------
+    Init I2C Communication with Satellite PIC MCUs
+    -----------------------------------------------------*/
     Satellite_Init();
 
 

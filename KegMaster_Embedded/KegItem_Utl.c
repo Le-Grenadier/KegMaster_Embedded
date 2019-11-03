@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -91,17 +92,19 @@ int kegItem_setDateTimeFromString(KegItem_obj* self, void* value)
         self->value = malloc(sizeof(struct tm));
         memset(self->value, 0, sizeof(struct tm));
     }
-    /* Year */
+    /* Year - (Years since 1900) */
     start = *(char**)value;
     end = strstr(start, "-");
     *end = 0;
     time.tm_year = atoi(start);
+    time.tm_year -= 1900;
 
-    /* Month */
+    /* Month - (base zero) */
     start = (char*)end + 1;
     end = strstr(start, "-");
     *end = 0;
     time.tm_mon = atoi(start);
+    time.tm_mon = time.tm_mon - 1;
 
     /* Day */
     start = (char*)end + 1;
@@ -192,17 +195,20 @@ char* kegItem_formatDateTime(KegItem_obj* self)
     // Db format example: "2016-05-20T07:00:00.0000000"
 #define DT_STR_FMT "%d-%d-%dT%d:%d:%2.7f"
 #define DT_STR_SIZE 4+2+2+2+2+2+7+6+1 /* digits, seperators, and null terminator*/
+    uint32_t year_absolute;
+    uint32_t month_1base;
     struct tm* time;
     char* str;
 
     time = (struct tm*)self->value;
+    year_absolute = time->tm_year + 1900;   /* tm struct stores year relative to 1900 -- Sql DateTime struct is absolute */
+    month_1base = time->tm_mon + 1;         /* tm struct stores zero based month */
     str = malloc(DT_STR_SIZE);
     memset(str, 0, DT_STR_SIZE);
-    snprintf(str, DT_STR_SIZE, DT_STR_FMT, time->tm_year, time->tm_mon, time->tm_mday, time->tm_hour, time->tm_min, time->tm_sec);
+    snprintf(str, DT_STR_SIZE, DT_STR_FMT, year_absolute, month_1base, time->tm_mday, time->tm_hour, time->tm_min, time->tm_sec);
 
     return(str);
 };
-
 
 
 /*=============================================================================

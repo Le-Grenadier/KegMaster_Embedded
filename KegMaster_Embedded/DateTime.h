@@ -3,6 +3,9 @@
 #include <stdbool.h>
 #include <time.h>
 
+/*-----------------------------------------------------------------------------
+Compare Date portion of date-time struct 
+-----------------------------------------------------------------------------*/
 static __inline bool DateTime_Compare(struct tm* base, struct tm* challenge) {
     bool gt;
 
