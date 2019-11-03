@@ -195,8 +195,8 @@ char* kegItem_formatDateTime(KegItem_obj* self)
     // Db format example: "2016-05-20T07:00:00.0000000"
 #define DT_STR_FMT "%d-%d-%dT%d:%d:%2.7f"
 #define DT_STR_SIZE 4+2+2+2+2+2+7+6+1 /* digits, seperators, and null terminator*/
-    uint32_t year_absolute;
-    uint32_t month_1base;
+    int year_absolute;
+    int month_1base;
     struct tm* time;
     char* str;
 
@@ -254,5 +254,19 @@ KegItem_obj* KegItem_getSiblingByKey(KegItem_obj* self, char* key)
     }
 
     return(item);
+}
+
+
+int KegItem_getTapNo(KegItem_obj* self)
+{
+    KegItem_obj* tapNo_obj = NULL;
+    int tapNo = -1;
+
+    if (self != NULL) {
+        tapNo_obj = KegItem_getSiblingByKey(self, "TapNo");
+        tapNo = tapNo_obj != NULL ? *(int*)tapNo_obj->value : -1;
+    }
+
+    return(tapNo);
 
 }

@@ -41,7 +41,6 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     KegItem_obj* rsrv;
     KegItem_obj* szPour;
     KegItem_obj* szSmpl;
-    KegItem_obj* tapNo;
     KegItem_obj* pourEn;
 
     uint16_t pourQty;
@@ -60,16 +59,14 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     rsrv = KegItem_getSiblingByKey(self, "QtyReserve");
     szPour = KegItem_getSiblingByKey(self, "PourQtyGlass");
     szSmpl = KegItem_getSiblingByKey(self, "PourQtySample");
-    tapNo = KegItem_getSiblingByKey(self, "TapNo");
     pourEn = self;
     clock_gettime(CLOCK_REALTIME, &realTime);
 
-    if (tapNo == NULL || avail == NULL || rsrv == NULL || szPour == NULL || szSmpl == NULL
-        || tapNo->value == NULL) {
+    if(avail == NULL || rsrv == NULL || szPour == NULL || szSmpl == NULL) {
         return(0);
     }
     /* Update Satellite MCU address */
-    address += *(I2C_DeviceAddress*)tapNo->value;
+    address += (I2C_DeviceAddress)KegItem_getTapNo(self);
     enablePour = *(bool*)pourEn->value;
     enablePourLimit = (*(float*)szPour->value > 0.1);
     enableSample = *(float*)szSmpl->value > 0.1;
@@ -82,11 +79,10 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     qtyMsg.id = Satellite_MsgId_InterruptRead;
     qtyMsg.data.intrpt.id = 0;
     qtyMsg.msg_trm = 0x04FF;
-    result = -1;
     result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&qtyMsg, sizeof(qtyMsg), (uint8_t*)&qtyMsg, sizeof(qtyMsg));
-    if (result != 0) {
+    if (result == 0) {
         err = errno;
-        Log_Debug("ERROR: TFMini Soft Reset Fail: errno=%d (%s)\n", err, strerror(err));
+        Log_Debug("ERROR: Failure to get QtyPoured: errno=%d (%s)\n", err, strerror(err));
     }
     pourQty = qtyMsg.data.intrpt.count / POUR_INT_CNVT;
 
@@ -125,11 +121,10 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     pourMsg.id = Satellite_MsgId_GpioSet;
     pourMsg.data.gpio.id = 3;
     pourMsg.data.gpio.state = (enablePour || enableSample) && !tempLockout;
-    pourMsg.data.gpio.holdTime = holdTime;
+    pourMsg.data.gpio.holdTime = (uint16_t)holdTime; /* Boundary checked above */
     pourMsg.msg_trm = 0x04FF;
-    result = -1;
     result = I2CMaster_Write(i2cFd, address, (uint8_t*)&pourMsg, sizeof(pourMsg));
-    if (result != 0) {
+    if (result == 0) {
         err = errno;
         Log_Debug("ERROR: Failure to set PourEnable state: errno=%d (%s)\n", err, strerror(err));
     }
@@ -146,7 +141,6 @@ int KegItem_ProcPressureDsrd(KegItem_obj* self)
 #define DWELL_MIN 0.02f
 
     KegItem_obj* pressCrnt_obj;
-    KegItem_obj* tapNo_obj;
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
     float pressureCrnt;
     float pressureDsrd;
@@ -160,10 +154,8 @@ int KegItem_ProcPressureDsrd(KegItem_obj* self)
         return(false);
     }
 
-    tapNo_obj = KegItem_getSiblingByKey(self, "TapNo");
     pressCrnt_obj = KegItem_getSiblingByKey(self, "PressureCrnt");
-    if (tapNo_obj == NULL || pressCrnt_obj == NULL
-        || tapNo_obj->value == NULL) {
+    if(pressCrnt_obj == NULL) {
         return(0);
     }
     pressureCrnt = *(float*)pressCrnt_obj->value;
@@ -179,26 +171,25 @@ int KegItem_ProcPressureDsrd(KegItem_obj* self)
     dwellTime = dwellTime > 0.0f ? fmaxf(dwellTime, DWELL_MIN) : 0;
 
     /* Send message */
-    address += *(I2C_DeviceAddress*)tapNo_obj->value;
+    address += (I2C_DeviceAddress)KegItem_getTapNo(self);
     msg.id = Satellite_MsgId_GpioSet;
     msg.data.gpio.id = 2;
     msg.data.gpio.state = 1;
     msg.data.gpio.holdTime = (uint16_t)(dwellTime * 1000);
     msg.msg_trm = 0x04FF;
-    result = -1;
     result = I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg));
 
-    if (result != 0) {
+    if (result == 0) {
         err = errno;
         Log_Debug("ERROR: Failure to set command Keg Pressurize output: errno=%d (%s)\n", err, strerror(err));
     }
 
     /* Update statistics */
     keg_item = KegItem_getSiblingByKey(self, "PressureDwellTime");
-    if((result==0) && (keg_item->value != NULL)) {
+    if((result!=0) && (keg_item->value != NULL)) {
         dwellTime += *(float*)keg_item->value;
         keg_item->value_set(keg_item, &dwellTime);
-
+        //TODO: Push to Db (Mark value dirty) -- save on message count for now.
     }
 
     return(result == 0);

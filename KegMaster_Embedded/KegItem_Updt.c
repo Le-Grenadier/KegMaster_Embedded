@@ -10,7 +10,6 @@
 #include "KegItem.h"
 #include "KegItem_Updt.h"
 #include "KegItem_Utl.h"
-//#include "KegMaster.h"
 #include "SateliteIntf.h"
 
 
@@ -23,30 +22,24 @@ KegItem Hw and DB accessors
 int KegItem_HwGetPressureCrnt(KegItem_obj* self) {
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
     int err;
-    KegItem_obj* tapNo;
     Satellite_MsgType msg;
     bool result;
     float pressure;
-
-    tapNo = KegItem_getSiblingByKey(self, "TapNo");
-    if (tapNo == NULL || tapNo->value == NULL) {
-        return(false);
-    }
 
     if (self->value == NULL) {
         float f;
         f = 0.0f;
         self->value_set(self, &f);
     }
-    address += *(I2C_DeviceAddress*)tapNo->value;
+    address += (I2C_DeviceAddress)KegItem_getTapNo(self);
     msg.id = Satellite_MsgId_ADCRead;
     msg.data.adc.id = 0;
     msg.data.adc.value = 0;
     result = I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&msg, sizeof(msg));
     pressure = (float)msg.data.adc.value; // Do some conversion here later (need to adjust for STP)
-    if (result != 0) {
+    if (result == 0) {
         err = errno;
-        Log_Debug("ERROR: TFMini Soft Reset Fail: errno=%d (%s)\n", err, strerror(err));
+        Log_Debug("ERROR: Failure to get current pressure: errno=%d (%s)\n", err, strerror(err));
         pressure = 999999.9f;
     }
 
@@ -55,10 +48,8 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self) {
 
 
 int KegItem_HwGetQtyAvail(KegItem_obj* self) {
-#define WEIGHT_UPDT_TOL 100 /* Grams */ / 1000.0f
+    #define WEIGHT_UPDT_TOL 100 /* Grams */ / 1000.0f
 
-    KegItem_obj* tapNo;
-    int          tapNo_value;
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
     int err;
     Satellite_MsgType msg_tx;
@@ -72,14 +63,7 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
         self->value_set(self, &f);
     }
 
-    tapNo = KegItem_getSiblingByKey(self, "TapNo");
-    if (tapNo == NULL
-        || tapNo->value == NULL) {
-        return(0);
-    }
-
-    tapNo_value = *(int*)tapNo->value;
-    address += (I2C_DeviceAddress)tapNo_value;
+    address += (I2C_DeviceAddress)KegItem_getTapNo(self);
     msg_tx.id = Satellite_MsgId_ADCRead;
     msg_tx.data.adc.id = 3;
     msg_tx.data.adc.value = 0;
@@ -90,14 +74,14 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
     weight = weight / 23.0f;      // convert to grams
     weight = weight / 1000.0f;    // convert to liters
     weight = weight * 2.11338f;   // Convert to pints
-    weight = weight - 7.0f;       // Keg weighs about 7 pints -- TODO: Impliment better tare functionality.
+    weight = weight < 7 ? weight : weight - 7.0f;       // Offset for Keg weight (about 7 pints) -- TODO: Impliment better tare functionality.
 
     /* Reasonableness checks */
     if ((result != true)
         || (weight != fmaxf(weight, 0.0f))    /* Going into beverage-debt with kegs not supported     */
         || (weight != fminf(weight, 800.0f))) { /* Kegs greater than 100 gallons not supported          */
         err = errno;
-        Log_Debug("ERROR: Failed to get Keg %d weight: errno=%d (%s)\n", tapNo_value, strerror(err));
+        Log_Debug("ERROR: Failed to get Keg %d weight: errno=%d (%s)\n", KegItem_getTapNo(self), strerror(err));
         weight = INFINITY;
     }
     else {
@@ -107,7 +91,7 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
             self->value_dirty = true;
         }
 
-        Log_Debug("INFO: Keg %d weighs %f\n", tapNo_value, weight);
+        Log_Debug("INFO: Keg %d weighs %f\n", KegItem_getTapNo(self), weight);
         self->value_set(self, &weight);
     }
 
