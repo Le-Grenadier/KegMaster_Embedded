@@ -19,8 +19,6 @@ KegItem Hw and DB accessors
 
 int KegItem_HwGetPressureCrnt(KegItem_obj* self) {
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
-    int err;
-    Satellite_MsgType msg;
     uint32_t pressure_raw;
     float pressure;
 
@@ -44,9 +42,6 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
     #define WEIGHT_UPDT_TOL 100 /* Grams */ / 1000.0f
 
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
-    int err;
-    Satellite_MsgType msg_tx;
-    Satellite_MsgType msg_rx;
     bool result;
     float weight;
     uint32_t weight_raw;
@@ -70,7 +65,7 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
 
     /* Reasonableness checks */
     weight = fmaxf(weight, 0.0f);
-    weight = fmaxf(weight, 999.9);
+    weight = fminf(weight, 999.9f);
 
     if(result != 0) {
         bool dfltOff = false;

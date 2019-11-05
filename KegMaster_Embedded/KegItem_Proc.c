@@ -83,9 +83,10 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
        - Pour disabled, sampling enabled, sample dispensed
     ----------------------------------------------------*/
     if ((realTime.tv_sec >= lockoutTimer.tv_sec)
-        && ( ( enablePour && enablePourLimit && (pourQty >= *(float*)szPour->value))
-          || (!enablePour && enableSample    && (pourQty >= *(float*)szSmpl->value)))) {
+        && ( ( enablePour && enablePourLimit && (pourQty > *(float*)szPour->value))
+          || (!enablePour && enableSample    && (pourQty > *(float*)szSmpl->value)))) {
         lockoutTimer.tv_sec = realTime.tv_sec + POUR_DELAY;
+        Satellite_InterruptReset(address, Satellite_IntrpId_QtyPoured);
     }
 
     /*-----------------------------------------------------
@@ -93,7 +94,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     -----------------------------------------------------*/
     if ((*(bool*)self->value)
         && (*(float*)avail->value <= *(float*)rsrv->value)
-        && (*(float*)avail->value + pourQty > * (float*)rsrv->value)) {
+        && (*(float*)avail->value > *(float*)rsrv->value - pourQty ) ) {
         self->value_set(self, &disable);
         self->value_dirty = true;
     }
