@@ -43,7 +43,7 @@ int            km_cnt = 0;
      // TODO - Push changes to device rather than poll
 	/*  This field			KegItem_ValueType,		update-cb					processing-cb				update Rate         re-query Rate */	
 	{ "Id",				    KegItem_TypeSTR,		NULL,						NULL,		        		   NO_UPDT,		       NO_UPDT      }, /* KegMaster_FieldId	*/
-	{ "Alerts",				KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdAlerts*/
+	{ "Alerts",				KegItem_TypeSTR,		NULL,						KegItem_ProcAlerts,			15*SEC,		           NO_UPDT      }, /* KegMaster_FieldIdAlerts*/
 	{ "TapNo",				KegItem_TypeINT,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdTapNo */
 	{ "Name",				KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdName */
 	{ "Style",				KegItem_TypeSTR,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdStyle */

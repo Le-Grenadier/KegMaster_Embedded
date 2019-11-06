@@ -195,3 +195,18 @@ int KegItem_ProcDateAvail(KegItem_obj* self) {
     return(0);
 }
 
+
+/*-----------------------------------------------------------------------------
+Process DateAvailable field
+ - Enable tap if appropriate
+ - TODO: Somehow modify only enable beer 'once-ish'
+-----------------------------------------------------------------------------*/
+int KegItem_ProcAlerts(KegItem_obj* self) {
+    #define MSG "Test Alert. Please Ignore"
+    char* s = MSG; 
+
+    self->value_set(self, &s);
+    //self->value_dirty = true;
+
+    return(0);
+}
