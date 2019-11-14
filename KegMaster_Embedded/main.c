@@ -1,5 +1,6 @@
 ﻿#include <stdbool.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -26,11 +27,15 @@ EventData TEventData = { .eventHandler = &TestPeriodic };
 extern KegMaster_obj** km;
 extern int             km_cnt;
 
-static void *pt_AzureIotPeriodic(void* args);
+static void* pt_AzureIotPeriodic(void* args);
+static void* pt_KegRequest(void* args);
 
 int main(void)
 {
     pthread_t pt_AzureIot;
+    bool requestComplete = true;
+    int numKegs = 0;
+    pthread_t* kegThreads;
 
 	int fd2 = GPIO_OpenAsOutput(10, GPIO_OutputMode_PushPull, GPIO_Value_High);
     if ( fd2 < 0 ) {
@@ -58,7 +63,6 @@ int main(void)
 	KegMaster_initRemote();
 	KegMaster_initLocal();
 	KegMaster_initProcs();
-	KegMaster_RequestKegData(0, NULL);
 	
     /*-----------------------------------------------------
     Init I2C Communication with Satellite PIC MCUs
@@ -80,32 +84,41 @@ int main(void)
 		return -1;
 	}
 
-
+    kegThreads = malloc(sizeof(pthread_t));
     while (true) {
+        struct {
+            int idx;
+            KegMaster_obj* e;
+            bool* requestComplete;
+        } args;
         int value;
+        KegMaster_obj* keg;
 
-         // TODO: These should be threads
-        for (int i = 0; i < km_cnt; i++) {
-            if (km[i] != NULL && km[i]->run != NULL) {
-                km[0]->run(km[0]);
-            }
-            else {
-                /* For now, Tap numbers may not be skipped -- but the data may be recieved out of order */
-                KegMaster_RequestKegData(i, NULL);
-            }
+        // NOTE: This pattern will fail spectacularly if we run out of RAM.
+        // Also Note: This is likely to be upwards of 1,000 kegs.
+        // TODO: Handle the above better.
+        // Also TODO: Don't run out of RAM.
+        if (requestComplete) {
+            requestComplete = false;
+
+            /* If current keg is populated, move to next */
+            keg = KegMaster_getKegPtr(&km, numKegs);
+            numKegs = numKegs + (keg != NULL && keg->fields != NULL);
+            keg = KegMaster_getKegPtr(&km, numKegs);
+
+            kegThreads = realloc(kegThreads, sizeof(pthread_t) * (numKegs + 1));
+
+            args.idx = numKegs;
+            args.e = &km[args.idx];
+            args.requestComplete = &requestComplete;
+
+            pthread_create(&kegThreads[args.idx], NULL, pt_KegRequest, &args);
         }
-		 value += 1;
-		 value %= 8;
+        sleep(30);
 
-		//GPIO_GetValue(fd0, &value);
+		value += 1;
+		value %= 8;
 		GPIO_SetValue(fd2, (GPIO_Value)(value&4)==0);
-
-        {
-        
-        /* Slow down the processing to try and help avoid racking up a huge bill if I make a mistake */
-        const struct timespec sleepTime = { 1, 0 };
-        nanosleep(&sleepTime, NULL);
-        }
     }
 }
 
@@ -126,6 +139,40 @@ static void *pt_AzureIotPeriodic(void* args) {
         AzureIoT_DoPeriodicTasks();
         nanosleep(&sleepTime, NULL);
     }
+}
+
+void *pt_KegRequest(void* args) {
+    struct {
+        int idx;
+        KegMaster_obj** e;
+        bool* requestComplete;
+    } params;
+    KegMaster_obj* self;
+    int seconds;
+
+    memcpy( &params, args, sizeof(params));
+
+    /*-----------------------------------------------------
+    Request data and block for up to 90 minutes (To help
+    reduce IoT message usage).
+    -----------------------------------------------------*/
+    KegMaster_RequestKegData(params.idx, NULL);
+
+    seconds = 90 * 60;
+    while (seconds > 0 && (params.e == NULL || (*params.e)->fields == NULL)) {
+        seconds--;
+        sleep(1);
+    }
+
+    /* Signal to main that we're done waiting */
+    *params.requestComplete = true;
+
+    self = *params.e;
+    while (params.e != NULL && self->run != NULL) {
+        self->run(self);
+    }
+
+    pthread_exit(0);
 }
 
 
