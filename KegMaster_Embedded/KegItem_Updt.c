@@ -37,7 +37,10 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self) {
     return((int)pressure);
 }
 
-
+/*-----------------------------------------------------------------------------
+Get Quantity available 
+ - from HX711 interface, via I2C to PIC 
+-----------------------------------------------------------------------------*/
 int KegItem_HwGetQtyAvail(KegItem_obj* self) {
     #define WEIGHT_UPDT_TOL 100 /* Grams */ / 1000.0f
 

@@ -5,11 +5,17 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "DateTime.h"
+
 #include "KegItem.h"
 #include "KegItem_Utl.h"
 
+/*=====================================================================================
+Keg Item Parsing Functions - From string
+=====================================================================================*/
+
 /*-----------------------------------------------------------------------------
-KegItem Object Value Setter functions
+Intake Float
 -----------------------------------------------------------------------------*/
 int kegItem_setFloat(KegItem_obj* self, void* value)
 {
@@ -27,6 +33,9 @@ int kegItem_setFloat(KegItem_obj* self, void* value)
     return(true);
 };
 
+/*-----------------------------------------------------------------------------
+Intake Int
+-----------------------------------------------------------------------------*/
 int kegItem_setInt(KegItem_obj* self, void* value)
 {
     if (value == NULL) {
@@ -43,6 +52,9 @@ int kegItem_setInt(KegItem_obj* self, void* value)
     return(true);
 };
 
+/*-----------------------------------------------------------------------------
+Intake String
+-----------------------------------------------------------------------------*/
 int kegItem_setStr(KegItem_obj* self, void* value)
 {
     assert(value);
@@ -56,6 +68,7 @@ int kegItem_setStr(KegItem_obj* self, void* value)
         self->value = NULL;
     }
 
+    // TODO: use realloc
     if (self->value == NULL)
     {
         size_t sz = strlen(*(char**)value);
@@ -66,6 +79,9 @@ int kegItem_setStr(KegItem_obj* self, void* value)
     return(NULL != strcpy(self->value, *(char**)value));
 };
 
+/*-----------------------------------------------------------------------------
+Intake Boolean
+-----------------------------------------------------------------------------*/
 int kegItem_setBool(KegItem_obj* self, void* value)
 {
     if (self->value == NULL && value != NULL)
@@ -78,14 +94,15 @@ int kegItem_setBool(KegItem_obj* self, void* value)
     return(true);
 };
 
-
+/*-----------------------------------------------------------------------------
+Intake SQL DateTime Type
+-----------------------------------------------------------------------------*/
 int kegItem_setDateTimeFromString(KegItem_obj* self, void* value)
 {
-    // Db format example: "2016-05-20T07:00:00.0000000"
+    /* Db format example: "2016-05-20T07:00:00.0000000" */
     char* start;
     char* end;
     struct tm time;
-    //struct tm tm = *localtime(&t);
 
     if (self->value == NULL && value != NULL)
     {
@@ -126,8 +143,6 @@ int kegItem_setDateTimeFromString(KegItem_obj* self, void* value)
 
     /* Second */
     start = (char*)end + 1;
-    //end = strstr(value, "."); // Omit Partial seconds
-    //*end = 0;
     time.tm_sec = atoi(start);
 
 
@@ -135,6 +150,11 @@ int kegItem_setDateTimeFromString(KegItem_obj* self, void* value)
 
     return(true);
 };
+
+
+/*=====================================================================================
+Keg Item Formatting Functions - to string
+=====================================================================================*/
 
 /*-----------------------------------------------------------------------------
 KegItem Object Value Formatting functions
@@ -151,6 +171,10 @@ char* kegItem_formatFloat(KegItem_obj* self) {
     return(c);
 }
 
+/*-----------------------------------------------------------------------------
+Format Integer KegItem to Integer string for sending to SQL Db
+ - char* must be free'd after use
+-----------------------------------------------------------------------------*/
 char* kegItem_formatInt(KegItem_obj* self) {
     const char* FMT = "%d";
     const size_t PRECISION = (((1 < 32) / 2) - 1) / 10;
@@ -162,6 +186,10 @@ char* kegItem_formatInt(KegItem_obj* self) {
     return(c);
 }
 
+/*-----------------------------------------------------------------------------
+Format String KegItem to string for sending to SQL Db
+ - char* must be free'd after use
+-----------------------------------------------------------------------------*/
 char* kegItem_formatStr(KegItem_obj* self) {
     const char* FMT = "%s";
 
@@ -174,7 +202,10 @@ char* kegItem_formatStr(KegItem_obj* self) {
     snprintf(c, sz, FMT, (char*)self->value);
     return(c);
 }
-
+/*-----------------------------------------------------------------------------
+Format Boolean KegItem to boolean string for sending to SQL Db
+ - char* must be free'd after use
+-----------------------------------------------------------------------------*/
 char* kegItem_formatBool(KegItem_obj* self) {
     const char* FMT = "%s";
     char* c;
@@ -190,11 +221,15 @@ char* kegItem_formatBool(KegItem_obj* self) {
     return(c);
 }
 
+/*-----------------------------------------------------------------------------
+Format DateTime KegItem to DateTime string for sending to SQL Db
+ - char* must be free'd after use
+-----------------------------------------------------------------------------*/
 char* kegItem_formatDateTime(KegItem_obj* self)
 {
-    // Db format example: "2016-05-20T07:00:00.0000000"
-#define DT_STR_FMT "%d-%d-%dT%d:%d:%2.7f"
-#define DT_STR_SIZE 4+2+2+2+2+2+7+6+1 /* digits, seperators, and null terminator*/
+    /* Db format example: "2016-05-20T07:00:00.0000000" */
+    #define DT_STR_FMT "%d-%d-%dT%d:%d:%2.7f"
+    #define DT_STR_SIZE 4+2+2+2+2+2+7+6+1 /* digits, seperators, and null terminator*/
     int year_absolute;
     int month_1base;
     struct tm* time;
@@ -211,12 +246,12 @@ char* kegItem_formatDateTime(KegItem_obj* self)
 };
 
 
-/*=============================================================================
+/*=====================================================================================
 Generic Utilities
-=============================================================================*/
+=====================================================================================*/
 
 /*-----------------------------------------------------------------------------
-KegItem Object Key:Value to JSON
+Return Key:Value pair (string:string) for given object
  - char* must be free'd after use
 -----------------------------------------------------------------------------*/
 char* KegItem_toJson(KegItem_obj* self) {
@@ -234,6 +269,10 @@ char* KegItem_toJson(KegItem_obj* self) {
     return(c);
 }
 
+/*-----------------------------------------------------------------------------
+Find sibling with given name
+ - Must be 'direct' sibling (linked into same list as self)
+-----------------------------------------------------------------------------*/
 KegItem_obj* KegItem_getSiblingByKey(KegItem_obj* self, char* key)
 {
     KegItem_obj* this = NULL;
@@ -256,7 +295,12 @@ KegItem_obj* KegItem_getSiblingByKey(KegItem_obj* self, char* key)
     return(item);
 }
 
-
+/*-----------------------------------------------------------------------------
+Get Tap Number for provided object
+ - 'TapNo' must have been already linked as sibling. This is importnant since 
+    latent messages are queued on the server and can be recieved before KegData
+    as a whole. (Processing will otherwise occur for singular data.)
+-----------------------------------------------------------------------------*/
 int KegItem_getTapNo(KegItem_obj* self)
 {
     KegItem_obj* tapNo_obj = NULL;
