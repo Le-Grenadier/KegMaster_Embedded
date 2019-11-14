@@ -27,3 +27,4 @@ Generic Utilities
 char* KegItem_toJson(KegItem_obj* self);
 KegItem_obj* KegItem_getSiblingByKey(KegItem_obj* self, char* key);
 int KegItem_getTapNo(KegItem_obj* self);
+int KegItem_SetAlert(KegItem_obj* self, char* alert);

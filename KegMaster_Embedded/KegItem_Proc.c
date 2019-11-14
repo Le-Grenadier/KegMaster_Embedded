@@ -2,6 +2,8 @@
 #include <time.h>
 #include <math.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <applibs/log.h>
@@ -177,36 +179,44 @@ Process DateAvailable field
  - TODO: Somehow modify only enable beer 'once-ish'
 -----------------------------------------------------------------------------*/
 int KegItem_ProcDateAvail(KegItem_obj* self) {
-    bool b;
-    KegItem_obj* pourEn;
+    #define ENABLE_WINDOW 6 * 60 * 60 // Six hours (in seconds)
+    bool makeAvail;
+    KegItem_obj* pourEn_obj;
+    KegItem_obj* name_obj;
+    bool pourEn_val;
+    char* name;
     time_t t = time(NULL);
     struct tm time = *localtime(&t);
-    if (self->value == NULL) {
+    double timeDiff;
+
+    //KegMaster_SatelliteMsgType msg;
+    pourEn_obj = KegItem_getSiblingByKey(self, "PourEn");
+    name_obj = KegItem_getSiblingByKey(self, "Name");
+
+    if (self->value == NULL 
+     || pourEn_obj == NULL 
+     || pourEn_obj->value == NULL
+     || name_obj == NULL
+     || name_obj->value == NULL ) {
         return(0);
     }
 
-    //KegMaster_SatelliteMsgType msg;
-    pourEn = KegItem_getSiblingByKey(self, "PourEn");
+    pourEn_val = *(bool*)pourEn_obj->value;
+    name = (char*)name_obj->value;
+    timeDiff = DateTime_Compare(self->value, &time);
+    makeAvail = ((timeDiff > 0) && (ENABLE_WINDOW > timeDiff));
+    /* Only enable if not already enabled */
 
-    if ((b = DateTime_Compare(self->value, &time)) && pourEn != NULL && !*(bool*)pourEn->value) {
-        pourEn->value_set(pourEn, &b);
+    if (makeAvail && !pourEn_val) {
+        const char* alert_pattern = "Good News!\n Your Keg Master is now pouring %s";
+        int sz = strlen(alert_pattern) + strlen(name) +1;
+        char* alert = malloc(sz);
+        
+        snprintf(alert, sz, alert_pattern, name);
+        pourEn_obj->value_set(pourEn_obj, &makeAvail);
+        KegItem_SetAlert(self, alert);
+        free(alert);
     }
-
-    return(0);
-}
-
-
-/*-----------------------------------------------------------------------------
-Process DateAvailable field
- - Enable tap if appropriate
- - TODO: Somehow modify only enable beer 'once-ish'
------------------------------------------------------------------------------*/
-int KegItem_ProcAlerts(KegItem_obj* self) {
-    #define MSG "Test Alert. Please Ignore"
-    char* s = MSG; 
-
-    self->value_set(self, &s);
-    //self->value_dirty = true;
 
     return(0);
 }

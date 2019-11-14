@@ -270,3 +270,26 @@ int KegItem_getTapNo(KegItem_obj* self)
     return(tapNo);
 
 }
+
+/*-----------------------------------------------------------------------------
+Process DateAvailable field
+ - Enable tap if appropriate
+ - TODO: Somehow modify only enable beer 'once-ish'
+-----------------------------------------------------------------------------*/
+int KegItem_SetAlert(KegItem_obj* self, char* alert) {
+    bool b;
+    KegItem_obj* alerts_obj;
+    time_t t = time(NULL);
+    struct tm time = *localtime(&t);
+
+    alerts_obj = KegItem_getSiblingByKey(self, "Alerts");
+
+    if (alerts_obj == NULL) {
+        return(0);
+    }
+
+    alerts_obj->value_set(alerts_obj, &alert);
+    alerts_obj->value_dirty;
+
+    return(0);
+}
