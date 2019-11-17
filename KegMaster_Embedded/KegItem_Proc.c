@@ -111,6 +111,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
 
     tempLockout = realTime.tv_sec <= lockoutTimer.tv_sec;
 
+    Log_Debug("INFO: Keg %d PourEn %d, SampleEn %d, TempLockout: %d\n", KegItem_getTapNo(self), enablePour, enableSample, tempLockout);
     enablePour = (enablePour || enableSample) && !tempLockout;
     Satellite_GpioSet(address, Satellite_OutputId_TapEn, &enablePour, (uint16_t)holdTime);
 
@@ -126,6 +127,7 @@ int KegItem_ProcPressureDsrd(KegItem_obj* self)
     #define DWELL_MIN 0.02f
 
     KegItem_obj* pressCrnt_obj;
+    KegItem_obj* pressEn_obj;
     I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
     float pressureCrnt;
     float pressureDsrd;
@@ -142,20 +144,36 @@ int KegItem_ProcPressureDsrd(KegItem_obj* self)
     }
 
     pressCrnt_obj = KegItem_getSiblingByKey(self, "PressureCrnt");
-    if(pressCrnt_obj == NULL) {
+    pressEn_obj = KegItem_getSiblingByKey(self, "PressureEn");
+
+    /*-----------------------------------------------------
+    Exit early if:
+     - we can't get required data
+     - pressure is not enabled 
+     -----------------------------------------------------*/
+    if(pressCrnt_obj == NULL 
+    || pressCrnt_obj->value == NULL
+    || pressEn_obj == NULL
+    || pressEn_obj->value == NULL) {
         return(0);
     }
     pressureCrnt = *(float*)pressCrnt_obj->value;
     pressureDsrd = *(float*)self->value;
+    gasEn = *(bool*)pressEn_obj->value;
 
     // [insert fancy control algorithm here] 
     /* For now, just proportional control
         - Minimum dwell time = 20 ms (mostly chosen at random, based on other, similar valves.)
         - Calculate dwell time as percentage of interval */
     dwellTime = (pressureDsrd - pressureCrnt) / pressureDsrd;
-    dwellTime = dwellTime * 0.5f; /* Max dwell of 1/2 inverval */
-    dwellTime = dwellTime * (float)self->refreshPeriod;
+    dwellTime = dwellTime * (float)self->refreshPeriod * 0.5f; /* Max dwell of 1/2 inverval */
     dwellTime = dwellTime > 0.0f ? fmaxf(dwellTime, DWELL_MIN) : 0;
+
+    /* Over-pressure check */
+    if (dwellTime <= 0) {
+        gasEn = false;
+        Satellite_GpioSetDflt(address, Satellite_OutputId_GasEn, &gasEn);
+    }
 
     /* Send message */
     address += (I2C_DeviceAddress)KegItem_getTapNo(self);
