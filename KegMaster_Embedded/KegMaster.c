@@ -4,6 +4,7 @@
 
 #include <errno.h>
 #include <assert.h>
+#include <semaphore.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -15,7 +16,6 @@
 #include "azure_iot_utilities.h"
 #include "azureiot/iothub_device_client_ll.h"
 #include "epoll_timerfd_utilities.h"
-#include "semaphore.h"
 #include "parson.h"
 #include "unistd.h"
 
@@ -40,7 +40,6 @@ int            km_cnt = 0;
 	/* Order dependent for ease of indexing, I'll probably remove it in the morning */
 	/* Only one dependency allowed per field atm									*/		
 	/*------------------------------------------------------------------------------*/
-     // TODO - Push changes to device rather than poll
 	/*  This field			KegItem_ValueType,		update-cb					processing-cb				update Rate         re-query Rate */	
 	{ "Id",				    KegItem_TypeSTR,		NULL,						NULL,		        		   NO_UPDT,		       NO_UPDT      }, /* KegMaster_FieldId	*/
 	{ "Alerts",				KegItem_TypeSTR,		NULL,						NULL,           			15*SEC,		           NO_UPDT      }, /* KegMaster_FieldIdAlerts*/

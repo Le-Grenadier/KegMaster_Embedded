@@ -1,5 +1,6 @@
 
 #include <errno.h>
+#include <semaphore.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -9,7 +10,9 @@
 
 #include "SatelliteIntf.h"
 
-int i2cFd = -1;
+static int i2cFd = -1;
+static sem_t i2c_sem;
+static sem_t* i2c_sem_ptr;
 
 #define procErr(err) \
     if (err != 0) { \
@@ -39,6 +42,9 @@ int Satellite_Init(void) {
 		return -1;
 	}
 
+    i2c_sem_ptr = &i2c_sem;
+    sem_init(i2c_sem_ptr, 0, 1);
+
     return 0;
 }
 
@@ -48,15 +54,17 @@ int Satellite_GpioRead(I2C_DeviceAddress address, uint8_t pinId, bool* data) {
     Satellite_MsgId cmd = Satellite_MsgId_GpioRead;
     Satellite_MsgType msg;
     Satellite_MsgType reply;
-    int err = EINVAL;
+    int err = data != NULL ? EACCES : EINVAL;
 
-    if (data != NULL) {
+    if (data != NULL 
+     && 0 == sem_wait(i2c_sem_ptr)) {
         msg.id = cmd;
         msg.data.gpio.id = pinId;
         msg.msg_trm = 0x04FF;
 
         err = 0 != I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&reply, sizeof(reply)) ? 0 : err;
         *data = reply.data.gpio.state;
+        sem_post(i2c_sem_ptr);
     }
 
     procErr(err)
@@ -66,15 +74,17 @@ int Satellite_GpioRead(I2C_DeviceAddress address, uint8_t pinId, bool* data) {
 int Satellite_GpioSet(I2C_DeviceAddress address, uint8_t pinId, bool* data, uint16_t holdTime) {
     Satellite_MsgId cmd = Satellite_MsgId_GpioSet;
     Satellite_MsgType msg;
-    int err = EINVAL;
+    int err = data != NULL ? EACCES : EINVAL;
 
-    if (data != NULL) {
+    if (data != NULL
+     && 0 == sem_wait(i2c_sem_ptr)) {
         msg.id = cmd;
         msg.data.gpio.id = pinId;
         msg.data.gpio.state = *data;
         msg.data.gpio.holdTime = holdTime;
         msg.msg_trm = 0x04FF;
         err = 0 != I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg)) ? 0 : err;
+        sem_post(i2c_sem_ptr);
     }
 
     procErr(err)
@@ -85,15 +95,17 @@ int Satellite_GpioSetDflt(I2C_DeviceAddress address, uint8_t pinId, bool* data) 
     #define DFLT_HOLD_TIME 1000; /* This does nothing atm but is here in case I change my mind in the future */
     Satellite_MsgId cmd = Satellite_MsgId_GpioSetDflt;
     Satellite_MsgType msg;
-    int err = EINVAL;
+    int err = data != NULL ? EACCES : EINVAL;
 
-    if (data != NULL) {
+    if (data != NULL
+     && 0 == sem_wait(i2c_sem_ptr)) {
         msg.id = cmd;
         msg.data.gpio.id = pinId;
         msg.data.gpio.state = *data;
         msg.data.gpio.holdTime = DFLT_HOLD_TIME;
         msg.msg_trm = 0x04FF;
         err = 0 != I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg)) ? 0 : err;
+        sem_post(i2c_sem_ptr);
     }
 
     procErr(err)
@@ -104,14 +116,16 @@ int Satellite_InterruptRead(I2C_DeviceAddress address, uint8_t pinId, uint32_t* 
     Satellite_MsgId cmd = Satellite_MsgId_InterruptRead;
     Satellite_MsgType msg;
     Satellite_MsgType reply;
-    int err = EINVAL;
+    int err = data != NULL ? EACCES : EINVAL;
 
-    if (data != NULL) {
+    if (data != NULL
+     && 0 == sem_wait(i2c_sem_ptr)) {
         msg.id = cmd;
         msg.data.intrpt.id = pinId;
         msg.msg_trm = 0x04FF;
         err = 0 != I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&reply, sizeof(reply)) ? 0 : err;
         *data = reply.data.intrpt.count;
+        sem_post(i2c_sem_ptr);
     }
 
     procErr(err)
@@ -121,13 +135,15 @@ int Satellite_InterruptRead(I2C_DeviceAddress address, uint8_t pinId, uint32_t* 
 int Satellite_InterruptReset(I2C_DeviceAddress address, uint8_t pinId) {
     Satellite_MsgId cmd = Satellite_MsgId_InterruptReset;
     Satellite_MsgType msg;
-    int err = EINVAL;
+    int err = EACCES;
 
-    msg.id = cmd;
-    msg.data.intrpt.id = pinId;
-    msg.msg_trm = 0x04FF;
-    err = 0 != I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg)) ? 0 : err;
-
+    if (0 == sem_wait(i2c_sem_ptr)) {
+        msg.id = cmd;
+        msg.data.intrpt.id = pinId;
+        msg.msg_trm = 0x04FF;
+        err = 0 != I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg)) ? 0 : err;
+        sem_post(i2c_sem_ptr);
+    }
     procErr(err)
     return(err);
 }
@@ -136,9 +152,10 @@ int Satellite_ADCRead(I2C_DeviceAddress address, uint8_t pinId, uint32_t* data) 
     Satellite_MsgId cmd = Satellite_MsgId_ADCRead;
     Satellite_MsgType msg;
     Satellite_MsgType reply;
-    int err = EINVAL;
+    int err = data != NULL ? EACCES : EINVAL;
 
-    if (data != NULL) {
+    if (data != NULL
+     && 0 == sem_wait(i2c_sem_ptr)) {
         msg.id = cmd;
         msg.data.adc.id = pinId;
         msg.msg_trm = 0x04FF;
@@ -146,6 +163,7 @@ int Satellite_ADCRead(I2C_DeviceAddress address, uint8_t pinId, uint32_t* data) 
         *data = reply.data.adc.value;
         err = 0 != I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&reply, sizeof(reply)) ? 0 : err;
         *data = reply.data.adc.value;
+        sem_post(i2c_sem_ptr);
     }
 
     procErr(err)
