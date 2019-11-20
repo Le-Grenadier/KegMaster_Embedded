@@ -18,8 +18,16 @@ KegItem Hw and DB accessors
 =============================================================================*/
 
 int KegItem_HwGetPressureCrnt(KegItem_obj* self) {
-    I2C_DeviceAddress address = 0x8; // Base address chosen at random-ish
+    #define THRESH 0.3f
+    #define PIC_ADC_REF_V 3.3f
+    #define SNSR_MAX_V 4.5f
+    #define PCNT_FULL_RNG (PIC_ADC_REF_V / SNSR_MAX_V)
+    #define OUR_PRES_RNG (100.0f * PCNT_FULL_RNG)
+    #define OFFST_0v5 (PCNT_FULL_RNG * 0.5f * 1024 / 4.5f) /* 0.5v : 0 Psi reading is from seller's spec, but I'm skeptical. TODO: Confirm */
+
+    I2C_DeviceAddress address = 0x8; 
     uint32_t pressure_raw;
+    float percent;
     float pressure;
 
     if (self->value == NULL) {
@@ -29,11 +37,20 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self) {
     }
     address += (I2C_DeviceAddress)KegItem_getTapNo(self);
     Satellite_ADCRead(address, Satellite_AdcId_Pressure, &pressure_raw);
-    pressure = (float)pressure_raw; 
-    pressure = pressure; // Do some conversion here later (need to adjust for STP and all that)
+    /*-----------------------------------------------------
+    Full scale pressure is 0-100psig @ 0.5-4.5 volts on a 10 bit ADC
+     - We don't need full scale and PIC I/O is 5v tollerant, so this is okay.
+    -----------------------------------------------------*/
+    pressure_raw = pressure_raw >> 6; /* PIC has 10 bit ADC built in and is left aligned by default */
+    percent = ((pressure_raw - OFFST_0v5) / 1024.0f);
+    pressure = OUR_PRES_RNG * percent;
     pressure = fmaxf(pressure, 0.0f);
     pressure = fminf(pressure, 99.9f);
-
+    if (THRESH < abs(pressure - *(float*)self->value)) {
+        self->value_set(self, &pressure);
+     //   self->value_dirty = 1;
+        Log_Debug("INFO: Keg %d PSI: %f\n", KegItem_getTapNo(self), pressure);
+    }
     return((int)pressure);
 }
 
