@@ -58,12 +58,20 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
     address += (I2C_DeviceAddress)KegItem_getTapNo(self);
     result = Satellite_ADCRead(address, Satellite_AdcId_Scale, &weight_raw);
 
-    /* Convert to pints and adjust for keg weight */
+    /*-----------------------------------------------------
+    Convert to pints and adjust for keg weight
+     Scalars (To pints, from ""liters"" as seen below):
+      - up to 12 pints == 2.11338
+      - In between == may need more work if more accuracy desired.
+      - up to 50 pints == 2.11338 / 1.7835
+    -----------------------------------------------------*/
     weight = (float)weight_raw;   // Raw data
-    weight = weight - 146400;     // Offset for zero
+    weight = weight - 146400;     // Tare
     weight = weight / 23.0f;      // convert to grams
     weight = weight / 1000.0f;    // convert to liters
     weight = weight * 2.11338f;   // Convert to pints
+    weight = fminf(weight, 12.0f) + ((fmaxf(weight, 12.0f) - 12.0f) / 1.7835f);
+
     weight = weight < 7 ? weight : weight - 7.0f;       // Offset for Keg weight (about 7 pints) -- TODO: Impliment better tare functionality.
 
     /* Reasonableness checks */
@@ -82,9 +90,8 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
         if ((fabsf((*(float*)self->value) - weight) > WEIGHT_UPDT_TOL)) {
             self->value_dirty = true;
             self->value_set(self, &weight);
+            Log_Debug("INFO: Keg %d weighs %f\n", KegItem_getTapNo(self), weight);
         }
-        Log_Debug("INFO: Keg %d weighs %f - Value Dirty %d\n", KegItem_getTapNo(self), weight, self->value_dirty);
-
     }
 
     return(result == 0);
