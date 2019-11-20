@@ -43,7 +43,7 @@ typedef enum {
 typedef enum {
     Satellite_AdcId_undef0,
     Satellite_AdcId_undef1,
-    Satellite_AdcId_Pressure = 2,
+    Satellite_AdcId_Pressure = 0,
     Satellite_AdcId_Scale = 3       /* External ADC */
 } Satellite_AdcId_Out;
 
