@@ -15,6 +15,12 @@
 #include "KegMaster.h"
 #include "SatelliteIntf.h"
 
+/*-----------------------------------------------------------------------------
+Uncomment and set this to debug one keg at a time (at the specified index). 
+ - Else the debugger gets confused when running multiple threads 
+ -----------------------------------------------------------------------------*/
+#define DEBUG_KEG_NO 3
+
 
 // Temp
 void TestPeriodic(EventData* e);
@@ -88,9 +94,9 @@ int main(void)
     while (true) {
         struct {
             int idx;
-            KegMaster_obj* e;
+            KegMaster_obj** e;
             bool* requestComplete;
-        } args;
+              } args;
         int value;
         KegMaster_obj* keg;
 
@@ -102,13 +108,17 @@ int main(void)
             requestComplete = false;
 
             /* If current keg is populated, move to next */
+
+            #if defined(DEBUG_KEG_NO)
+            numKegs = DEBUG_KEG_NO;
+            #endif
             keg = KegMaster_getKegPtr(&km, numKegs);
             numKegs = numKegs + (keg != NULL && keg->fields != NULL);
             keg = KegMaster_getKegPtr(&km, numKegs);
 
-            kegThreads = realloc(kegThreads, sizeof(pthread_t) * (numKegs + 1));
-
+            kegThreads = realloc(kegThreads, (size_t)(sizeof(pthread_t) * (numKegs + 1)));
             args.idx = numKegs;
+            
             args.e = &km[args.idx];
             args.requestComplete = &requestComplete;
 
@@ -159,13 +169,16 @@ void *pt_KegRequest(void* args) {
     KegMaster_RequestKegData(params.idx, NULL);
 
     seconds = 90 * 60;
-    while (seconds > 0 && (params.e == NULL || (*params.e)->fields == NULL)) {
+    /* Visual studio defaults data to 0xFF in debug builds */
+    while (seconds > 0 && (params.e == NULL || params.e == 0xFFFFFFFF || (*params.e)->fields == NULL)) {
         seconds--;
         sleep(1);
     }
 
-    /* Signal to main that we're done waiting */
+    /* Signal to main that we're done waiting - Don't request more kegs if we're debugging */
+    #if !defined(DEBUG_KEG_NO)
     *params.requestComplete = true;
+    #endif
 
     self = *params.e;
     while (params.e != NULL && self->run != NULL) {
