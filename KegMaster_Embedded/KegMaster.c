@@ -37,8 +37,9 @@ int            km_cnt = 0;
  static KegMaster_FieldDefType KegMaster_FieldDef[] =
 	{
 	/*------------------------------------------------------------------------------*/
-	/* Order dependent for ease of indexing, I'll probably remove it in the morning */
-	/* Only one dependency allowed per field atm									*/		
+	/* Data definitions; update and processing callbacks and rates	    			*/		
+    /*                                                                              */
+    /* Proc and update rates cannot be less than one second                         */      
 	/*------------------------------------------------------------------------------*/
 	/*  This field			KegItem_ValueType,		update-cb					processing-cb				update Rate         re-query Rate */	
 	{ "Id",				    KegItem_TypeSTR,		NULL,						NULL,		        		   NO_UPDT,		       NO_UPDT      }, /* KegMaster_FieldId	*/
@@ -53,8 +54,8 @@ int            km_cnt = 0;
 	{ "PourNotification",	KegItem_TypeBOOL,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPourNotify */
 	{ "PourQtyGlass",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourQtyGlass */
 	{ "PourQtySample",		KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		       120*MIN          }, /* KegMaster_FieldIdPourQtySample */
-	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	NULL,                       15*SEC,		           NO_UPDT      }, /* KegMaster_FieldIdPressureCrnt */
-	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						KegItem_ProcPressureDsrd,    5*SEC,		       120*MIN          }, /* KegMaster_FieldIdPressureDsrd */
+	{ "PressureCrnt",		KegItem_TypeFLOAT,		KegItem_HwGetPressureCrnt,	NULL,                        1*SEC,		           NO_UPDT      }, /* KegMaster_FieldIdPressureCrnt */
+	{ "PressureDsrd",		KegItem_TypeFLOAT,		NULL,						KegItem_ProcPressureDsrd,    1*SEC,		       120*MIN          }, /* KegMaster_FieldIdPressureDsrd */
     { "PressureDwellTime",	KegItem_TypeFLOAT,		NULL,						NULL,						15*MIN,		           NO_UPDT      }, /* KegMaster_FieldIdPressureDwellTime */
 	{ "PressureEn",			KegItem_TypeBOOL,		NULL,						NULL,						15*MIN,	           120*MIN          }, /* KegMaster_FieldIdPressureEn */
 	{ "QtyAvailable",		KegItem_TypeFLOAT,		KegItem_HwGetQtyAvail,	    NULL,                       30*SEC,		           NO_UPDT      }, /* KegMaster_FieldIdQtyAvailable */
@@ -288,10 +289,11 @@ int KegMaster_execute(KegMaster_obj* self)
             s = malloc(sz);
             memset(s, 0, sz);
             if (self->fields_json != NULL) { /* Add a comma for multiple fields */
-                s = strcat(self->fields_json, ",");
+                strncpy(s, strcat(self->fields_json, ","), sz);
             }
             s = strcat(s, j);
-            free(self->fields_json);
+            if( self->fields_json != NULL )
+                free(self->fields_json);
             free(j);
             self->fields_json = s;
 
