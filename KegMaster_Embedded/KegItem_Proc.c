@@ -23,12 +23,14 @@ Process PourEn data field
  - Temporarily disable pouring after dispensing QtyPour or QtySample as appropriate
  - Disable poring if QtyAvail drops into QtyReserve (Will Update Database. TODO: Send alert)
  
- - TODO: Reduce function complexity
+ - TODO: Reduce function complexity - Move proc pour qty to another function
  - TODO: Make this more robust to behave well in the absence of related data
 -----------------------------------------------------------------------------*/
 int KegItem_ProcPourEn(KegItem_obj* self) {
 #define POUR_DELAY 5 /* Seconds */ 
-#define POUR_INT_CNVT 1000 /* Interrupts per oz */
+#define INT_PER_CUP 60.0f
+#define OZ_PER_CUP 8.0f
+#define POUR_INT_CNVT (OZ_PER_CUP / INT_PER_CUP) /* Interrupts per oz */
 
     static bool disable = false;
     static struct timespec lockoutTimer = { 0, 0 };
@@ -45,6 +47,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     KegItem_obj* pourEn;
 
     uint16_t pourQty;
+    float pourOz;
     uint32_t holdTime;
     struct timespec realTime;
 
@@ -76,7 +79,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     Qty Poured Already
     -----------------------------------------------------*/
     Satellite_InterruptRead(address, Satellite_IntrpId_QtyPoured, &pourQty);
-    pourQty = pourQty / POUR_INT_CNVT;
+    pourOz = pourQty * POUR_INT_CNVT;
 
     /*-----------------------------------------------------
     Disable pour temporarily if
@@ -85,8 +88,8 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
        - Pour disabled, sampling enabled, sample dispensed
     ----------------------------------------------------*/
     if ((realTime.tv_sec >= lockoutTimer.tv_sec)
-        && ( ( enablePour && enablePourLimit && (pourQty > *(float*)szPour->value))
-          || (!enablePour && enableSample    && (pourQty > *(float*)szSmpl->value)))) {
+        && ( ( enablePour && enablePourLimit && (pourOz > *(float*)szPour->value))
+          || (!enablePour && enableSample    && (pourOz > *(float*)szSmpl->value)))) {
         lockoutTimer.tv_sec = realTime.tv_sec + POUR_DELAY;
         Satellite_InterruptReset(address, Satellite_IntrpId_QtyPoured);
     }
@@ -96,7 +99,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     -----------------------------------------------------*/
     if ((*(bool*)self->value)
         && (*(float*)avail->value <= *(float*)rsrv->value)
-        && (*(float*)avail->value > *(float*)rsrv->value - pourQty ) ) {
+        && (*(float*)avail->value > *(float*)rsrv->value - pourOz) ) {
         self->value_set(self, &disable);
         self->value_dirty = true;
     }
@@ -106,7 +109,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     -----------------------------------------------------*/
     /* Enable Pouring based on state, if not locked-out                                 */
     /*  - Enable for 2x refresh period so an error won't leave it unlocked indefinitely */
-    holdTime = (uint32_t)self->refreshPeriod * 2 * 1000;
+    holdTime = (uint32_t)self->refreshPeriod * 5 * 1000;
     holdTime = holdTime > UINT16_MAX ? UINT16_MAX : (uint16_t)holdTime;
 
     tempLockout = realTime.tv_sec <= lockoutTimer.tv_sec;
