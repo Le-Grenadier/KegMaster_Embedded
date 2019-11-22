@@ -62,7 +62,7 @@ typedef struct {
         struct {
             uint8_t id;
             uint16_t count;
-        } intrpt; /* short name BC 'interrupt' is a keyword in MPLAB (apparently) and messes with syntax highlighting */
+        } intrpt; 
 
         struct {
             uint8_t id;

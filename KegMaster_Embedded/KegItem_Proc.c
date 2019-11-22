@@ -28,7 +28,7 @@ Process PourEn data field
 -----------------------------------------------------------------------------*/
 int KegItem_ProcPourEn(KegItem_obj* self) {
 #define POUR_DELAY 5 /* Seconds */ 
-#define INT_PER_CUP 60.0f
+#define INT_PER_CUP 240.0f
 #define OZ_PER_CUP 8.0f
 #define POUR_INT_CNVT (OZ_PER_CUP / INT_PER_CUP) /* Interrupts per oz */
 
@@ -46,7 +46,7 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     KegItem_obj* szSmpl;
     KegItem_obj* pourEn;
 
-    uint16_t pourQty;
+    uint32_t pourQty;
     float pourOz;
     uint32_t holdTime;
     struct timespec realTime;

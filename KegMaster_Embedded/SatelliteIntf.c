@@ -160,7 +160,6 @@ int Satellite_ADCRead(I2C_DeviceAddress address, uint8_t pinId, uint32_t* data) 
         msg.data.adc.id = pinId;
         msg.msg_trm = 0x04FF;
 
-        *data = reply.data.adc.value;
         err = 0 != I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&reply, sizeof(reply)) ? 0 : err;
         *data = reply.data.adc.value;
         sem_post(i2c_sem_ptr);
