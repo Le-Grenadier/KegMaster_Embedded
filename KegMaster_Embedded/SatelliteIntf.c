@@ -60,9 +60,9 @@ int Satellite_GpioRead(I2C_DeviceAddress address, uint8_t pinId, bool* data) {
      && 0 == sem_wait(i2c_sem_ptr)) {
         msg.id = cmd;
         msg.data.gpio.id = pinId;
-        msg.msg_trm = 0x04FF;
+        msg.data.gpio.msg_trm = 0x04FF;
 
-        err = 0 != I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&reply, sizeof(reply)) ? 0 : err;
+        err = 0 != I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, SatelliteMsg_Sz(gpio), (uint8_t*)&reply, SatelliteMsg_Sz(gpio)) ? 0 : err;
         *data = reply.data.gpio.state;
         sem_post(i2c_sem_ptr);
     }
@@ -82,8 +82,8 @@ int Satellite_GpioSet(I2C_DeviceAddress address, uint8_t pinId, bool* data, uint
         msg.data.gpio.id = pinId;
         msg.data.gpio.state = *data;
         msg.data.gpio.holdTime = holdTime;
-        msg.msg_trm = 0x04FF;
-        err = 0 != I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg)) ? 0 : err;
+        msg.data.gpio.msg_trm = 0x04FF;
+        err = 0 < I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, SatelliteMsg_Sz(gpio)) ? 0 : err;
         sem_post(i2c_sem_ptr);
     }
 
@@ -103,8 +103,8 @@ int Satellite_GpioSetDflt(I2C_DeviceAddress address, uint8_t pinId, bool* data) 
         msg.data.gpio.id = pinId;
         msg.data.gpio.state = *data;
         msg.data.gpio.holdTime = DFLT_HOLD_TIME;
-        msg.msg_trm = 0x04FF;
-        err = 0 != I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg)) ? 0 : err;
+        msg.data.gpio.msg_trm = 0x04FF;
+        err = 0 != I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, SatelliteMsg_Sz(gpio)) ? 0 : err;
         sem_post(i2c_sem_ptr);
     }
 
@@ -122,8 +122,8 @@ int Satellite_InterruptRead(I2C_DeviceAddress address, uint8_t pinId, uint32_t* 
      && 0 == sem_wait(i2c_sem_ptr)) {
         msg.id = cmd;
         msg.data.intrpt.id = pinId;
-        msg.msg_trm = 0x04FF;
-        err = 0 != I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&reply, sizeof(reply)) ? 0 : err;
+        msg.data.intrpt.msg_trm = 0x04FF;
+        err = 0 != I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, SatelliteMsg_Sz(intrpt), (uint8_t*)&reply, SatelliteMsg_Sz(intrpt)) ? 0 : err;
         *data = reply.data.intrpt.count;
         sem_post(i2c_sem_ptr);
     }
@@ -140,8 +140,8 @@ int Satellite_InterruptReset(I2C_DeviceAddress address, uint8_t pinId) {
     if (0 == sem_wait(i2c_sem_ptr)) {
         msg.id = cmd;
         msg.data.intrpt.id = pinId;
-        msg.msg_trm = 0x04FF;
-        err = 0 != I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, sizeof(msg)) ? 0 : err;
+        msg.data.intrpt.msg_trm = 0x04FF;
+        err = 0 != I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, SatelliteMsg_Sz(intrpt)) ? 0 : err;
         sem_post(i2c_sem_ptr);
     }
     procErr(err)
@@ -158,13 +158,62 @@ int Satellite_ADCRead(I2C_DeviceAddress address, uint8_t pinId, uint32_t* data) 
      && 0 == sem_wait(i2c_sem_ptr)) {
         msg.id = cmd;
         msg.data.adc.id = pinId;
-        msg.msg_trm = 0x04FF;
+        msg.data.adc.msg_trm = 0x04FF;
 
-        err = 0 != I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, sizeof(msg), (uint8_t*)&reply, sizeof(reply)) ? 0 : err;
+        err = 0 != I2CMaster_WriteThenRead(i2cFd, address, (uint8_t*)&msg, SatelliteMsg_Sz(adc), (uint8_t*)&reply, SatelliteMsg_Sz(adc)) ? 0 : err;
         *data = reply.data.adc.value;
         sem_post(i2c_sem_ptr);
     }
 
     procErr(err)
     return(err);
+}
+
+int Satellite_LedSetData(I2C_DeviceAddress address, rgb_type* data, uint8_t data_sz) {
+    uint8_t i, txSz;
+    rgb_type* ptrBuf, *ptrData;
+    Satellite_MsgId cmd = Satellite_MsgId_LedSetData;
+    Satellite_MsgType msg;
+    int err = data == NULL ? EACCES : \
+              data_sz > NUM_LEDS_MAX ? EFBIG : EINVAL;
+
+    if (data != NULL
+        && 0 == sem_wait(i2c_sem_ptr)) {
+        msg.id = cmd;
+        msg.data.led_setData.cnt = data_sz;
+        msg.data.led_setData.msg_trm = 0x04FF;
+        ptrData = data;
+        ptrBuf = &msg.data.led_setData.data;
+        for (i = 0; i < data_sz; i++) {
+            memcpy(ptrBuf, ptrData, sizeof(*ptrBuf));
+            ptrData++;
+            ptrBuf++;
+        }
+        ptrBuf->raw = 0x04FF04FF;
+        txSz = offsetof(Satellite_MsgType, data) + data_sz * sizeof(rgb_type) + 2 + 1;
+        err = 0 < I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, txSz);
+        sem_post(i2c_sem_ptr);
+    }
+
+    procErr(err)
+        return(err);
+}
+
+
+int Satellite_LedSetBreathe(I2C_DeviceAddress address, uint8_t breathe) {
+    Satellite_MsgId cmd = Satellite_MsgId_LedSetBreathe;
+    Satellite_MsgType msg;
+    int err = EACCES;
+
+    if (0 == sem_wait(i2c_sem_ptr)) {
+        msg.id = cmd;
+        msg.data.led_setBreathe.state = breathe;
+        msg.data.led_setBreathe.msg_trm = 0x04FF;
+
+        err = 0 != I2CMaster_Write(i2cFd, address, (uint8_t*)&msg, SatelliteMsg_Sz(led_setBreathe)) ? 0 : err;
+        sem_post(i2c_sem_ptr);
+    }
+
+    procErr(err)
+        return(err);
 }

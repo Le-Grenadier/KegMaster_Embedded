@@ -27,7 +27,7 @@ Process PourEn data field
  - TODO: Make this more robust to behave well in the absence of related data
 -----------------------------------------------------------------------------*/
 int KegItem_ProcPourEn(KegItem_obj* self) {
-#define POUR_DELAY 5 /* Seconds */ 
+#define POUR_DELAY 0.5 /* Seconds */ 
 #define INT_PER_CUP 240.0f
 #define OZ_PER_CUP 8.0f
 #define POUR_INT_CNVT (OZ_PER_CUP / INT_PER_CUP) /* Interrupts per oz */
@@ -117,6 +117,19 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     Log_Debug("INFO: Keg %d PourEn %d, SampleEn %d, TempLockout: %d\n", KegItem_getTapNo(self), enablePour, enableSample, tempLockout);
     enablePour = (enablePour || enableSample) && !tempLockout;
     Satellite_GpioSet(address, Satellite_OutputId_TapEn, &enablePour, (uint16_t)holdTime);
+    {
+        rgb_type red[20] = { [0 ... 19] = 0x000000FF };
+        rgb_type blue[20] = { [0 ... 19] = 0x00FF0000 };
+        rgb_type green[20] = { [0 ... 19] = 0x0000FF00 };
+        volatile rgb_type* p; 
+        
+        p = red;
+        p = blue;
+        p = green;
+
+        Satellite_LedSetData(address, p, 2);
+        Satellite_LedSetBreathe(address, !enablePour);
+    }
 
     return(ret = 1);
 }
