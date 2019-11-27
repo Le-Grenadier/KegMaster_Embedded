@@ -48,9 +48,10 @@ int KegItem_HwGetPressureCrnt(KegItem_obj* self) {
     pressure = fminf(pressure, 99.9f);
     if (THRESH < abs(pressure - *(float*)self->value)) {
         self->value_set(self, &pressure);
-     //   self->value_dirty = 1;
-        Log_Debug("INFO: Keg %d PSI: %f\n", KegItem_getTapNo(self), pressure);
+        self->value_dirty = 1;
     }
+    Log_Debug("INFO: Keg %d PSI: %f\n", KegItem_getTapNo(self), pressure);
+
     return((int)pressure);
 }
 
@@ -80,14 +81,14 @@ int KegItem_HwGetQtyAvail(KegItem_obj* self) {
      Scalars (To pints, from ""liters"" as seen below):
       - up to 12 pints == 2.11338
       - In between == may need more work if more accuracy desired.
-      - up to 50 pints == 2.11338 / 1.7835
+      - up to 50 pints == 2.11338 / 2.1402
     -----------------------------------------------------*/
     weight = (float)weight_raw;   // Raw data
     weight = weight - 146400;     // Tare
     weight = weight / 23.0f;      // convert to grams
     weight = weight / 1000.0f;    // convert to liters
     weight = weight * 2.11338f;   // Convert to pints
-    weight = fminf(weight, 12.0f) + ((fmaxf(weight, 12.0f) - 12.0f) / 1.7835f);
+    weight = fminf(weight, 12.0f) + ((fmaxf(weight, 12.0f) - 12.0f) / 2.1402f);
 
     weight = weight < 7 ? weight : weight - 7.0f;       // Offset for Keg weight (about 7 pints) -- TODO: Impliment better tare functionality.
 
