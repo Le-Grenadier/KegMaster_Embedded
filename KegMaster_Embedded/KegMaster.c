@@ -289,7 +289,8 @@ int KegMaster_execute(KegMaster_obj* self)
             s = malloc(sz);
             memset(s, 0, sz);
             if (self->fields_json != NULL) { /* Add a comma for multiple fields */
-                strncpy(s, strcat(self->fields_json, ","), sz);
+                s = strncpy(s, self->fields_json, strlen(self->fields_json));
+                s = strcat(s, ",");
             }
             s = strcat(s, j);
             if( self->fields_json != NULL )
