@@ -43,6 +43,7 @@ struct KegItem_obj
 	/* State */
 	bool value_sync;  /* Ready for sync with Sql Db */	
 	bool value_dirty; /* Udpated from HW, not yet processed */
+    void* data;
 
 	/* Data accessors - Direct value access not supported */
 	KegItem_funcSet* value_set;

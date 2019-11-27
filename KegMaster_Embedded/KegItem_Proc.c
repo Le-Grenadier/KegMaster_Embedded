@@ -27,13 +27,13 @@ Process PourEn data field
  - TODO: Make this more robust to behave well in the absence of related data
 -----------------------------------------------------------------------------*/
 int KegItem_ProcPourEn(KegItem_obj* self) {
-#define POUR_DELAY 0.5 /* Seconds */ 
-#define INT_PER_CUP 240.0f
+#define POUR_DELAY 5 /* Seconds */ 
+#define INT_PER_CUP 180.0f//240.0f
 #define OZ_PER_CUP 8.0f
 #define POUR_INT_CNVT (OZ_PER_CUP / INT_PER_CUP) /* Interrupts per oz */
 
     static bool disable = false;
-    static struct timespec lockoutTimer = { 0, 0 };
+    struct timespec* lockoutTimer;
 
     int ret = 0;
     bool enablePour;
@@ -76,6 +76,14 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     enableSample = *(float*)szSmpl->value > 0.1;
 
     /*-----------------------------------------------------
+    Get Current lockout state 
+    -----------------------------------------------------*/
+    if (self->data == NULL) {
+        self->data = malloc(sizeof(struct timespec));
+    }
+    lockoutTimer = self->data;
+
+    /*-----------------------------------------------------
     Qty Poured Already
     -----------------------------------------------------*/
     Satellite_InterruptRead(address, Satellite_IntrpId_QtyPoured, &pourQty);
@@ -87,10 +95,10 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
        - Pour enabled, glass has been dispensed
        - Pour disabled, sampling enabled, sample dispensed
     ----------------------------------------------------*/
-    if ((realTime.tv_sec >= lockoutTimer.tv_sec)
+    if ((realTime.tv_sec >= lockoutTimer->tv_sec)
         && ( ( enablePour && enablePourLimit && (pourOz > *(float*)szPour->value))
           || (!enablePour && enableSample    && (pourOz > *(float*)szSmpl->value)))) {
-        lockoutTimer.tv_sec = realTime.tv_sec + POUR_DELAY;
+        lockoutTimer->tv_sec = realTime.tv_sec + POUR_DELAY;
         Satellite_InterruptReset(address, Satellite_IntrpId_QtyPoured);
     }
 
@@ -109,26 +117,37 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     -----------------------------------------------------*/
     /* Enable Pouring based on state, if not locked-out                                 */
     /*  - Enable for 2x refresh period so an error won't leave it unlocked indefinitely */
-    holdTime = (uint32_t)self->refreshPeriod * 5 * 1000;
-    holdTime = holdTime > UINT16_MAX ? UINT16_MAX : (uint16_t)holdTime;
-
-    tempLockout = realTime.tv_sec <= lockoutTimer.tv_sec;
+    tempLockout = realTime.tv_sec <= lockoutTimer->tv_sec;
 
     Log_Debug("INFO: Keg %d PourEn %d, SampleEn %d, TempLockout: %d\n", KegItem_getTapNo(self), enablePour, enableSample, tempLockout);
     enablePour = (enablePour || enableSample) && !tempLockout;
     Satellite_GpioSet(address, Satellite_OutputId_TapEn, &enablePour, (uint16_t)holdTime);
     {
-        rgb_type red[20] = { [0 ... 19] = 0x000000FF };
+        rgb_type red[20] = { [0 ... 19] = 0x000000F };
         rgb_type blue[20] = { [0 ... 19] = 0x00FF0000 };
-        rgb_type green[20] = { [0 ... 19] = 0x0000FF00 };
-        volatile rgb_type* p; 
-        
-        p = red;
-        p = blue;
-        p = green;
+        rgb_type green[20] = { [0 ... 19] = 0x00000F00 };
+        rgb_type* p; 
 
-        Satellite_LedSetData(address, p, 2);
-        Satellite_LedSetBreathe(address, !enablePour);
+        /*-------------------------------------------------
+        Tap Locked == Red
+        Samples Enabled == Blue
+        Pouring Enabled == Green
+        -------------------------------------------------*/
+        if (tempLockout) {
+            p = red;
+        }
+        else if (enablePour) {
+            p = green;
+        }
+        else {
+            p = blue;
+        }
+        /*-------------------------------------------------
+        Each Tap is attached to a 16 LED strip
+        Set LEDs to 'Breathe' if Pouring is disabled or locked out
+        -------------------------------------------------*/
+        Satellite_LedSetData(address, p, 16);
+        Satellite_LedSetBreathe(address, !(enablePour || enableSample) || tempLockout);
     }
 
     return(ret = 1);
