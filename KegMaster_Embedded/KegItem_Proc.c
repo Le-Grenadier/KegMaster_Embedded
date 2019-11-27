@@ -119,9 +119,13 @@ int KegItem_ProcPourEn(KegItem_obj* self) {
     /*  - Enable for 2x refresh period so an error won't leave it unlocked indefinitely */
     tempLockout = realTime.tv_sec <= lockoutTimer->tv_sec;
 
-    Log_Debug("INFO: Keg %d PourEn %d, SampleEn %d, TempLockout: %d\n", KegItem_getTapNo(self), enablePour, enableSample, tempLockout);
-    enablePour = (enablePour || enableSample) && !tempLockout;
+    enablePour = (enablePour || enableSample);
+    /* Pulse poring if quantity is dispensed - Pulse should generate foam, and encourage user to turn tap off */
+    holdTime = (uint32_t)self->refreshPeriod * 5 * 1000 * !tempLockout + 250;
+    holdTime = holdTime > UINT16_MAX ? UINT16_MAX : (uint16_t)holdTime;
     Satellite_GpioSet(address, Satellite_OutputId_TapEn, &enablePour, (uint16_t)holdTime);
+    Log_Debug("INFO: Keg %d PourEn %d, SampleEn %d, TempLockout: %d\n", KegItem_getTapNo(self), enablePour, enableSample, tempLockout);
+
     {
         rgb_type red[20] = { [0 ... 19] = 0x000000F };
         rgb_type blue[20] = { [0 ... 19] = 0x00FF0000 };
